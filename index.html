@@ -1,0 +1,4584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+    // 全局错误捕获 - 调试用
+    window.onerror = function(msg, url, line, col, error) {
+        var div = document.createElement('div');
+        div.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff4444;color:white;padding:10px;z-index:99999;font-size:14px;word-break:break-all;';
+        div.textContent = 'JS ERROR L' + line + ':C' + col + ': ' + msg;
+        document.body.appendChild(div);
+        return false;
+    };
+    window.addEventListener('unhandledrejection', function(e) {
+        var div = document.createElement('div');
+        div.style.cssText = 'position:fixed;top:40px;left:0;right:0;background:#ff8800;color:white;padding:10px;z-index:99999;font-size:14px;';
+        div.textContent = 'PROMISE ERROR: ' + e.reason;
+        document.body.appendChild(div);
+    });
+    // 版本标记，强制浏览器不使用缓存
+    console.log('TRAINING SYSTEM v2.5.0 - LOADED AT ' + new Date().toISOString());
+    </script>
+    <title>冉鹏工作室培训管理系统 v2.5.0</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
+        
+        /* 登陆界面 */
+        .login-container { 
+            min-height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-card h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        .login-card p {
+            text-align: center;
+            color: #999;
+            margin-bottom: 30px;
+            font-size: 12px;
+        }
+        .login-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+        }
+        .login-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 14px;
+            color: #999;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .login-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        .login-form { display: none; }
+        .login-form.active { display: block; }
+        
+        /* 学员考试界面 */
+        .exam-page-container {
+            display: flex;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .exam-page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .exam-page-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .exam-page-user {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 14px;
+        }
+        .exam-page-logout {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .exam-page-logout:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .exam-page-content {
+            flex: 1;
+            padding: 40px;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* 考试列表 */
+        .exam-list-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        .exam-list-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .exam-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .exam-item:hover {
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+        .exam-info-box {
+            flex: 1;
+        }
+        .exam-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .exam-details {
+            font-size: 13px;
+            color: #999;
+            display: flex;
+            gap: 20px;
+        }
+        .exam-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .exam-status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .exam-status-pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .exam-status-done {
+            background: #d1fae5;
+            color: #059669;
+        }
+        
+        /* 考试答题页面 */
+        .exam-testing-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 700px;
+        }
+        .exam-testing-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .exam-testing-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        .exam-timer {
+            font-size: 16px;
+            font-weight: 600;
+            color: #f56565;
+        }
+        .exam-progress {
+            width: 100%;
+            height: 4px;
+            background: #f0f0f0;
+            border-radius: 2px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        .exam-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .exam-question-counter {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+        .question-text {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .question-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+        .option {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        .option:hover {
+            border-color: #667eea;
+            background: #f9f9f9;
+        }
+        .option input {
+            margin-right: 12px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        .option label {
+            flex: 1;
+            cursor: pointer;
+        }
+        
+        /* 考试结果页面 */
+        .exam-result-container {
+            background: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .exam-result-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        .exam-result-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .exam-result-text {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 30px;
+        }
+        .exam-result-score {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .exam-result-score-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        .exam-result-score-value {
+            font-size: 48px;
+            font-weight: 700;
+        }
+        
+        /* 按钮 */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-primary:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+        
+        /* 通知提示 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.success {
+            border-left: 4px solid #48bb78;
+        }
+        .toast.error {
+            border-left: 4px solid #f56565;
+        }
+        .toast.info {
+            border-left: 4px solid #4299e1;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* 日历样式 */
+        .schedule-calendar { width:100%;border-collapse:collapse;table-layout:fixed; }
+        .schedule-calendar th { padding:10px;text-align:center;background:#f7fafc;font-size:13px;color:#4a5568;font-weight:600;border:1px solid #e2e8f0; }
+        .schedule-calendar td { padding:6px;vertical-align:top;height:100px;border:1px solid #e2e8f0;font-size:12px;cursor:pointer;transition:background 0.2s; }
+        .schedule-calendar td:hover { background:#edf2f7; }
+        .schedule-calendar td.today { background:#ebf8ff;border:2px solid #4299e1; }
+        .schedule-calendar td.other-month { background:#f7fafc;color:#cbd5e0; }
+        .schedule-calendar .day-num { font-weight:600;color:#2d3748;font-size:13px; }
+        .schedule-calendar .schedule-item { background:#ebf8ff;border-left:3px solid #4299e1;padding:2px 6px;margin-top:3px;border-radius:3px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#2b6cb0; }
+        .schedule-calendar .schedule-item.has-teacher { border-left-color:#48bb78;background:#f0fff4;color:#276749; }
+        
+        /* 档案卡片 */
+        .profile-card { background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);transition:transform 0.2s,box-shadow 0.2s; }
+        .profile-card:hover { transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+        .profile-card-header { display:flex;align-items:center;gap:12px;margin-bottom:12px; }
+        .profile-card-avatar { width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-size:20px;font-weight:bold;flex-shrink:0; }
+        .profile-card-avatar img { width:100%;height:100%;border-radius:50%;object-fit:cover; }
+        .profile-card-info { flex:1; }
+        .profile-card-info h4 { margin:0;font-size:15px;color:#2d3748; }
+        .profile-card-info p { margin:2px 0 0;font-size:12px;color:#718096; }
+        .profile-card-detail { font-size:13px;color:#4a5568;line-height:1.8; }
+        .profile-card-detail span { color:#a0aec0; }
+        .profile-card-actions { margin-top:12px;display:flex;gap:8px; }
+        .profile-photo-thumb { width:80px;height:80px;border-radius:8px;object-fit:cover;border:2px solid #e2e8f0; }
+        
+        /* 考勤状态标签 */
+        .att-status { padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600; }
+        .att-present { background:#c6f6d5;color:#276749; }
+        .att-leave { background:#fef3c7;color:#92400e; }
+        .att-absent { background:#fed7d7;color:#9b2c2c; }
+        
+        /* 快捷登录样式 */
+        .quick-login-area { text-align:center;padding:15px 0; }
+        .quick-login-steps { text-align:left;background:#f8fafc;border-radius:8px;padding:15px;margin:10px 0;font-size:12px;color:#4a5568;line-height:1.8; }
+        .quick-login-steps ol { margin:0;padding-left:18px; }
+        .quick-login-link-box { background:#edf2f7;border-radius:8px;padding:12px;margin:10px 0;word-break:break-all;cursor:pointer;transition:all 0.2s;border:1px dashed #cbd5e0; }
+        .quick-login-link-box:hover { background:#e2e8f0;border-color:#667eea; }
+        .quick-login-link-label { font-size:11px;color:#718096;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center; }
+        .quick-login-link-text { font-size:13px;color:#2d3748;font-family:monospace;user-select:all; }
+        .quick-login-link-expired { color:#e53e3e;font-size:12px;text-align:center;padding:15px 0; }
+        
+        /* 主系统界面样式 */
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 220px;
+            background: linear-gradient(135deg, #001a4d 0%, #003d99 100%);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .sidebar-logo {
+            padding: 0 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .sidebar-menu {
+            list-style: none;
+        }
+        .sidebar-menu li {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-menu button {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            background: none;
+            color: #ddd;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        .sidebar-menu button:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding-left: 25px;
+        }
+        .sidebar-menu button.active {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border-left: 3px solid #4da6ff;
+            padding-left: 17px;
+        }
+        .logout-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            padding: 10px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        .content {
+            flex: 1;
+            padding: 30px;
+            overflow: auto;
+            background: white;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .page-header h2 {
+            font-size: 24px;
+            color: #333;
+        }
+        .page-header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .stat-card-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+        .stat-card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        table thead {
+            background: #f8f9fa;
+        }
+        table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        table tbody tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .form {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin: 0;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .search-box input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        .user-info {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        .user-info p {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+    </style>
+    <!-- 腾讯云开发 SDK -->
+    <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.1/cloudbase.full.js"></script>
+</head>
+<body>
+
+<!-- 登陆界面 -->
+<div id="loginPage" class="login-container">
+    <div class="login-card">
+        <h1>冉鹏工作室</h1>
+        <p>培训管理系统 v2.5.0</p>
+        
+        <div class="login-tabs">
+            <button class="login-tab active" onclick="switchLoginTab('admin')">管理员登陆</button>
+            <button class="login-tab" onclick="switchLoginTab('student')">学员考试登陆</button>
+        </div>
+        
+        <!-- 管理员登陆 -->
+        <div id="adminForm" class="login-form active">
+            <div class="form-group">
+                <label>账号</label>
+                <input type="text" id="adminUsername" placeholder="管理员账号" value="">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="adminPassword" placeholder="管理员密码" value="">
+            </div>
+            <button class="login-btn" onclick="doAdminLogin()">登陆</button>
+        </div>
+        
+        <!-- 学员考试登陆 -->
+        <div id="studentForm" class="login-form">
+            <div class="login-tabs" style="margin-bottom:15px;border-bottom:1px solid #eee;">
+                <button class="login-tab active" onclick="switchStudentLoginTab('password',this)" style="font-size:12px;padding:6px;">账号密码</button>
+                <button class="login-tab" onclick="switchStudentLoginTab('quicklink',this)" style="font-size:12px;padding:6px;">快捷登录</button>
+            </div>
+            <div id="studentPasswordLogin">
+                <div class="form-group">
+                    <label>学员姓名</label>
+                    <input type="text" id="studentName" placeholder="输入你的姓名">
+                </div>
+                <div class="form-group">
+                    <label>学员ID</label>
+                    <input type="text" id="studentID" placeholder="输入学员ID">
+                </div>
+                <button class="login-btn" onclick="doStudentLogin()">进入考试</button>
+            </div>
+            <div id="studentQuickLogin" style="display:none;">
+                <div class="quick-login-area">
+                    <div class="quick-login-steps">
+                        <strong>使用方法：</strong>
+                        <ol>
+                            <li>管理员创建考试后，点击下方链接自动复制</li>
+                            <li>将链接发送给学员（微信/QQ/短信均可）</li>
+                            <li>学员打开链接后输入姓名和学员ID即可进入考试</li>
+                        </ol>
+                    </div>
+                    <div id="quickLoginLinkArea"></div>
+                </div>
+                <div style="text-align:center;margin-top:12px;">
+                    <a href="javascript:void(0)" onclick="switchStudentLoginTab('password',document.querySelector('#studentForm .login-tab'))" style="font-size:12px;color:#667eea;">使用账号密码登录</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 学员考试界面 -->
+<div id="examPage" style="display:none;" class="exam-page-container">
+    <div style="width: 100%;">
+        <div class="exam-page-header">
+            <div class="exam-page-title">考试中心</div>
+            <div class="exam-page-user">
+                <span>学员：<strong id="examPageStudentName">-</strong></span>
+                <span>ID：<strong id="examPageStudentID">-</strong></span>
+                <button class="exam-page-logout" onclick="studentLogout()">退出</button>
+            </div>
+        </div>
+        <div class="exam-page-content">
+            <div class="exam-list-container">
+                <div class="exam-list-title">待考试场</div>
+                <div id="studentExamList"></div>
+            </div>
+            <div class="exam-list-container" style="margin-top: 24px;">
+                <div class="exam-list-title">我的成绩</div>
+                <div id="studentScoreList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 考试答题页面 -->
+<div id="examTestingPage" style="display:none;" class="exam-page-container">
+    <div style="width: 100%;">
+        <div class="exam-page-header">
+            <div class="exam-page-title" id="examTitle">考试</div>
+            <div class="exam-timer" id="examTimer">60分钟</div>
+        </div>
+        <div class="exam-page-content">
+            <div class="exam-testing-container">
+                <div class="exam-progress">
+                    <div id="examProgress" class="exam-progress-bar"></div>
+                </div>
+                <div class="exam-question-counter">
+                    第 <span id="questionNumber">1</span> / <span id="totalQuestionCount">10</span> 题
+                </div>
+                <div id="questionContent"></div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="nextExamQuestion()">下一题</button>
+                    <button class="btn btn-primary" onclick="submitStudentExam()">提交答卷</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 考试结果页面 -->
+<div id="examResultPage" style="display:none;" class="exam-page-container">
+    <div style="width: 100%;">
+        <div class="exam-page-content">
+            <div class="exam-result-container">
+                <div class="exam-result-icon">✓</div>
+                <div class="exam-result-title">答卷已提交</div>
+                <div class="exam-result-text">感谢参与本次考试，请继续加油！</div>
+                <div class="exam-result-score">
+                    <div class="exam-result-score-label">本次考试成绩</div>
+                    <div class="exam-result-score-value" id="resultScore">0</div>
+                    <div style="font-size: 12px; margin-top: 10px; opacity: 0.9;" id="resultExamName">考试</div>
+                </div>
+                <button class="btn btn-primary" onclick="backToExamList()" style="width: 100%;">返回考试列表</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 主系统界面 -->
+<div id="mainPage" style="display:none;" class="main-container">
+    <div class="sidebar">
+        <div class="user-info">
+            <div style="font-size: 14px; font-weight: 600;" id="sidebarUsername">用户</div>
+            <p id="sidebarRole">管理员</p>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li><button onclick="showPage('dashboard')" class="active">仪表盘</button></li>
+            <li><button onclick="showPage('students')">学员管理</button></li>
+            <li><button onclick="showPage('profiles')">学员档案</button></li>
+            <li><button onclick="showPage('courses')">课程管理</button></li>
+            <li><button onclick="showPage('schedule')">排课日历</button></li>
+            <li><button onclick="showPage('attendance')">考勤管理</button></li>
+            <li><button onclick="showPage('grades')">成绩管理</button></li>
+            <li><button onclick="showPage('questions')">题库管理</button></li>
+            <li><button onclick="showPage('exams')">考试管理</button></li>
+            <li><button onclick="showPage('teachers')">教师管理</button></li>
+            <li><button onclick="showPage('fees')">费用管理</button></li>
+            <li><button onclick="showPage('notices')">通知公告</button></li>
+            <li><button onclick="showPage('settings')">系统设置</button></li>
+        </ul>
+        
+        <button class="logout-btn" onclick="doLogout()">登出</button>
+    </div>
+    
+    <div class="content">
+        <!-- 仪表盘 -->
+        <div id="dashboard" class="page active">
+            <div class="page-header">
+                <h2>仪表盘</h2>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-label">总学员数</div>
+                    <div class="stat-card-value" id="totalStudents">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-label">总课程数</div>
+                    <div class="stat-card-value" id="totalCourses">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-label">总考试数</div>
+                    <div class="stat-card-value" id="totalExams">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-label">累计收费</div>
+                    <div class="stat-card-value" id="monthlyFees">¥0</div>
+                </div>
+            </div>
+            <!-- 仪表盘下方：最新通知 + 考试统计 -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;">
+                <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    <h3 style="margin:0 0 10px;font-size:15px;color:#2c5282;">📢 最新通知</h3>
+                    <div id="dashNoticeList" style="font-size:13px;color:#4a5568;"></div>
+                </div>
+                <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    <h3 style="margin:0 0 10px;font-size:15px;color:#2c5282;">📊 考试统计</h3>
+                    <div id="dashExamStats" style="font-size:13px;color:#4a5568;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 学员管理 -->
+        <div id="students" class="page">
+            <div class="page-header">
+                <h2>学员管理</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary" onclick="openAddStudentModal()">添加学员</button>
+                    <button class="btn btn-secondary" onclick="exportStudents()">导出</button>
+                    <button class="btn btn-secondary" onclick="importStudents()">导入</button>
+                </div>
+            </div>
+            <div class="search-box">
+                <input type="text" id="studentSearch" placeholder="搜索学员..." onkeyup="filterStudents()">
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>学员ID</th>
+                            <th>姓名</th>
+                            <th>联系方式</th>
+                            <th>报名课程</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsList">
+                    </tbody>
+                </table>
+            </div>
+            <input type="file" id="importStudentFile" style="display:none" accept=".csv" onchange="handleStudentImport()">
+        </div>
+        
+        <!-- 课程管理 -->
+        <div id="courses" class="page">
+            <div class="page-header">
+                <h2>课程管理</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary" onclick="openAddCourseModal()">添加课程</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>课程名称</th>
+                            <th>讲师</th>
+                            <th>学时</th>
+                            <th>价格</th>
+                            <th>报名人数</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coursesList">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 考勤管理 -->
+        <div id="attendance" class="page">
+            <div class="page-header">
+                <h2>考勤管理</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary" onclick="openAddAttendanceModal()">记录考勤</button>
+                    <button class="btn btn-secondary" onclick="exportAttendance()">导出考勤</button>
+                </div>
+            </div>
+            <div class="search-box">
+                <input type="date" id="attendanceDateFilter" onchange="renderAttendance()" style="width:160px;">
+                <select id="attendanceCourseFilter" onchange="renderAttendance()">
+                    <option value="">全部课程</option>
+                </select>
+                <select id="attendanceStatusFilter" onchange="renderAttendance()">
+                    <option value="">全部状态</option>
+                    <option value="present">已签到</option>
+                    <option value="leave">请假</option>
+                    <option value="absent">旷课</option>
+                </select>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>学员</th>
+                            <th>课程</th>
+                            <th>状态</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceList">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 课程排课日历 -->
+        <div id="schedule" class="page">
+            <div class="page-header">
+                <h2>课程排课日历</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary" onclick="openAddScheduleModal()">添加排课</button>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                <button class="btn btn-secondary" onclick="changeScheduleMonth(-1)">◀ 上月</button>
+                <span id="scheduleMonthLabel" style="font-size:16px;font-weight:600;min-width:140px;text-align:center;"></span>
+                <button class="btn btn-secondary" onclick="changeScheduleMonth(1)">下月 ▶</button>
+                <button class="btn btn-secondary" onclick="goScheduleToday()" style="margin-left:8px;">今天</button>
+            </div>
+            <div id="scheduleCalendar" style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.08);"></div>
+        </div>
+        
+        <!-- 学员档案 -->
+        <div id="profiles" class="page">
+            <div class="page-header">
+                <h2>学员档案</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary" onclick="openAddProfileModal()">创建档案</button>
+                </div>
+            </div>
+            <div class="search-box">
+                <input type="text" id="profileSearch" placeholder="搜索学员档案..." onkeyup="renderProfiles()">
+            </div>
+            <div id="profileCardList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;"></div>
+        </div>
+        
+        <!-- 成绩管理 -->
+        <div id="grades" class="page">
+            <div class="page-header">
+                <h2>成绩管理</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-secondary" onclick="exportGrades()">导出成绩</button>
+                    <button class="btn btn-secondary" onclick="importGrades()">导入成绩</button>
+                </div>
+            </div>
+            
+            <!-- 考试成绩区 -->
+            <div style="margin-bottom: 24px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <h3 style="font-size: 16px; color: #2c5282; margin:0;">📋 考试成绩</h3>
+                    <button class="btn btn-secondary" onclick="exportExamScores()" style="padding:6px 12px;font-size:12px;">导出考试成绩</button>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="examScoresSearch" placeholder="搜索考试成绩..." onkeyup="filterExamScores()">
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>学员ID</th>
+                                <th>学员名</th>
+                                <th>考试名称</th>
+                                <th>得分</th>
+                                <th>及格线</th>
+                                <th>结果</th>
+                                <th>考试日期</th>
+                            </tr>
+                        </thead>
+                        <tbody id="examScoresList">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 手动成绩区 -->
+            <div>
+                <h3 style="margin-bottom: 12px; font-size: 16px; color: #2c5282;">📝 课程成绩</h3>
+                <div class="search-box">
+                    <input type="text" id="gradesSearch" placeholder="搜索学员成绩..." onkeyup="filterGrades()">
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>学员名</th>
+                                <th>课程</th>
+                                <th>平时成绩</th>
+                                <th>期末成绩</th>
+                                <th>综合成绩</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gradesList">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <input type="file" id="importGradesFile" style="display:none" accept=".csv" onchange="handleGradesImport()">
+        </div>
+        
+        <!-- 题库管理 -->
+        <div id="questions" class="page">
+            <div class="page-header">
+                <h2>题库管理</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-danger" id="batchDeleteBtn" onclick="batchDeleteQuestions()" style="display:none;">批量删除</button>
+                    <button class="btn btn-primary" onclick="openAddQuestionModal()">添加题目</button>
+                    <button class="btn btn-secondary" onclick="exportQuestions()">导出题库</button>
+                    <button class="btn btn-secondary" onclick="importQuestions()">导入题库</button>
+                </div>
+            </div>
+            <!-- 级别统计卡片 -->
+            <div id="levelStats" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;"></div>
+            <div class="search-box">
+                <input type="text" id="questionSearch" placeholder="搜索题目..." onkeyup="filterQuestions()">
+                <select id="typeFilter" onchange="filterQuestions()">
+                    <option value="">全部类型</option>
+                    <option value="single">单选题</option>
+                    <option value="multi">多选题</option>
+                    <option value="judge">判断题</option>
+                    <option value="fill">填空题</option>
+                </select>
+                <select id="levelFilter" onchange="filterQuestions()">
+                    <option value="">全部级别</option>
+                </select>
+                <select id="difficultyFilter" onchange="filterQuestions()">
+                    <option value="">全部难度</option>
+                    <option value="easy">简单</option>
+                    <option value="medium">中等</option>
+                    <option value="hard">困难</option>
+                </select>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllQuestions" onchange="toggleSelectAll(this)"></th>
+                            <th>题目</th>
+                            <th>级别</th>
+                            <th>类型</th>
+                            <th>难度</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="questionsList">
+                    </tbody>
+                </table>
+            </div>
+            <input type="file" id="importQuestionFile" style="display:none" accept=".csv,.json" onchange="handleQuestionImport()">
+        </div>
+        
+        <!-- 考试管理 -->
+        <div id="exams" class="page">
+            <div class="page-header">
+                <h2>考试管理</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary" onclick="openAddExamModal()">创建考试</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>考试名称</th>
+                            <th>题型配置</th>
+                            <th>级别范围</th>
+                            <th>时限</th>
+                            <th>参加人数</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="examsList">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 教师管理 -->
+        <div id="teachers" class="page">
+            <div class="page-header">
+                <h2>教师管理</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary" onclick="openAddTeacherModal()">添加教师</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>教师名</th>
+                            <th>教龄</th>
+                            <th>教授课程</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teachersList">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 费用管理 -->
+        <div id="fees" class="page">
+            <div class="page-header">
+                <h2>费用管理</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary" onclick="openAddFeeModal()">记录费用</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>学员名</th>
+                            <th>课程</th>
+                            <th>金额</th>
+                            <th>日期</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="feesList">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 通知公告 -->
+        <div id="notices" class="page">
+            <div class="page-header">
+                <h2>通知公告</h2>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary" onclick="openAddNoticeModal()">发布通知</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>标题</th>
+                            <th>类型</th>
+                            <th>发布时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="noticesList">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 系统设置 -->
+        <div id="settings" class="page">
+            <div class="page-header">
+                <h2>系统设置</h2>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                <!-- 管理员账户设置 -->
+                <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">👤 管理员账户</h3>
+                    <div class="form">
+                        <div class="form-group" style="margin-bottom:15px;">
+                            <label>当前管理员</label>
+                            <input type="text" id="settingsAdminName" style="width:100%;" placeholder="管理员显示名称">
+                        </div>
+                        <div class="form-group" style="margin-bottom:15px;">
+                            <label>修改密码</label>
+                            <input type="password" id="oldPassword" placeholder="原密码" style="width:100%;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:15px;">
+                            <input type="password" id="newPassword" placeholder="新密码（至少6位）" style="width:100%;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:15px;">
+                            <input type="password" id="confirmPassword" placeholder="确认新密码" style="width:100%;">
+                        </div>
+                        <button class="btn btn-primary" onclick="saveAdminSettings()" style="width:100%;">保存设置</button>
+                    </div>
+                </div>
+                
+                <!-- 指定管理员 -->
+                <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">🔑 管理员管理</h3>
+                    <div id="adminList"></div>
+                    <div style="margin-top:15px;border-top:1px solid #e2e8f0;padding-top:15px;">
+                        <h4 style="margin:0 0 10px;font-size:13px;color:#718096;">添加新管理员</h4>
+                        <div class="form">
+                            <div class="form-group" style="margin-bottom:10px;">
+                                <input type="text" id="newAdminUsername" placeholder="管理员账号" style="width:100%;">
+                            </div>
+                            <div class="form-group" style="margin-bottom:10px;">
+                                <input type="password" id="newAdminPassword" placeholder="初始密码" style="width:100%;">
+                            </div>
+                            <button class="btn btn-primary" onclick="addNewAdmin()" style="width:100%;">添加管理员</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 数据备份/恢复 -->
+                <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">💾 数据备份与恢复</h3>
+                    <p style="font-size:13px;color:#718096;margin-bottom:15px;">导出整个系统数据为JSON文件，可用于数据迁移或灾难恢复。</p>
+                    <div style="display:flex;gap:10px;margin-bottom:15px;">
+                        <button class="btn btn-primary" onclick="exportFullBackup()" style="flex:1;">📦 导出完整备份</button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('importBackupFile').click()" style="flex:1;">📥 恢复数据</button>
+                    </div>
+                    <div style="font-size:12px;color:#a0aec0;">
+                        <p>最后备份时间：<span id="lastBackupTime">未备份</span></p>
+                        <p>数据库大小：<span id="dbSize">-</span></p>
+                    </div>
+                    <input type="file" id="importBackupFile" style="display:none" accept=".json" onchange="importFullBackup()">
+                </div>
+                
+                <!-- 系统信息 -->
+                <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">ℹ️ 系统信息</h3>
+                    <div style="font-size:13px;color:#4a5568;line-height:2;">
+                        <p>系统版本：<strong>v2.5.0</strong></p>
+                        <p>学员数量：<span id="infoStudentCount">0</span></p>
+                        <p>课程数量：<span id="infoCourseCount">0</span></p>
+                        <p>考试数量：<span id="infoExamCount">0</span></p>
+                        <p>题库数量：<span id="infoQuestionCount">0</span></p>
+                        <p>考勤记录：<span id="infoAttendanceCount">0</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加学员模态框 -->
+<div id="addStudentModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">添加学员</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>姓名</label>
+                <input type="text" id="studentName_add">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>联系方式</label>
+                <input type="text" id="studentPhone">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>报名课程</label>
+                <select id="studentCourse">
+                    <option>选择课程...</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addStudentModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveStudent()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 添加课程模态框 -->
+<div id="addCourseModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">添加课程</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>课程名称</label>
+                <input type="text" id="courseName">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>讲师</label>
+                <input type="text" id="courseTeacher">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>学时</label>
+                <input type="number" id="courseHours">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>价格</label>
+                <input type="number" id="coursePrice">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addCourseModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveCourse()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 添加题目模态框 -->
+<div id="addQuestionModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">添加题目</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>题目</label>
+                <textarea id="questionContentInput" rows="3"></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>级别</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <select id="questionLevelSelect">
+                    </select>
+                    <button type="button" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="promptAddLevel()">+ 新增级别</button>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>题型</label>
+                <select id="questionTypeSelect">
+                    <option value="single">单选题</option>
+                    <option value="multi">多选题</option>
+                    <option value="judge">判断题</option>
+                    <option value="fill">填空题</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>难度</label>
+                <select id="questionDifficultySelect">
+                    <option value="easy">简单</option>
+                    <option value="medium">中等</option>
+                    <option value="hard">困难</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>选项/答案 <span style="color:#f56565; font-size:12px;">（用|分隔选项，最后一项为答案。单选/多选/填空示例：A|B|C|AB；判断题示例：是|否|是）</span></label>
+                <textarea id="questionOptionsInput" rows="4" placeholder="示例：&#10;单选题：选项A|选项B|选项C|B&#10;多选题：选项A|选项B|选项C|选项D|AC&#10;判断题：是|否|是&#10;填空题：答案1|答案2|答案3|答案1"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addQuestionModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveQuestion()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 添加考试模态框 -->
+<div id="addExamModal" class="modal">
+    <div class="modal-content" style="max-width:560px;">
+        <div class="modal-header">创建考试</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>考试名称</label>
+                <input type="text" id="examName">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>抽题范围（题目级别）</label>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <label style="font-weight:normal;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                        <input type="checkbox" id="examLevelAll" checked onchange="toggleExamLevelAll(this)"> 全选
+                    </label>
+                    <div id="examLevelChecks" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+                </div>
+                <div style="font-size:11px;color:#718096;margin-top:4px;">勾选的级别范围都会纳入抽题池，可跨级别抽题</div>
+            </div>
+            <div style="border-top:1px solid #e2e8f0;margin:12px 0;padding-top:12px;">
+                <label style="font-weight:bold;font-size:14px;color:#2c5282;">题型数量分配 <span style="font-size:11px;color:#718096;font-weight:normal;">（从选中级别范围内随机抽题）</span></label>
+                <div id="examTypeCountSummary" style="font-size:11px;color:#4a5568;margin:6px 0 10px;background:#edf2f7;padding:6px 10px;border-radius:4px;"></div>
+                <div id="examTypeCountContainer"></div>
+            </div>
+            <div style="border-top:1px solid #e2e8f0;margin:12px 0;padding-top:12px;">
+                <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+                        <label>时限（分钟）</label>
+                        <input type="number" id="examTime" value="60">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+                        <label>及格分数</label>
+                        <input type="number" id="examPassScore" value="60">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addExamModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveExam()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 添加教师模态框 -->
+<div id="addTeacherModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">添加教师</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>教师名</label>
+                <input type="text" id="teacherName">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>教龄</label>
+                <input type="number" id="teacherExperience">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>教授课程</label>
+                <input type="text" id="teacherCourses">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addTeacherModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveTeacher()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 添加费用模态框 -->
+<div id="addFeeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">记录费用</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>学员名</label>
+                <select id="feeStudent">
+                    <option>选择学员...</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>课程</label>
+                <select id="feeCourse">
+                    <option>选择课程...</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>金额</label>
+                <input type="number" id="feeAmount">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>状态</label>
+                <select id="feeStatus">
+                    <option value="paid">已支付</option>
+                    <option value="pending">待支付</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addFeeModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveFee()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 添加通知模态框 -->
+<div id="addNoticeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header" id="noticeModalTitle">发布通知</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>标题</label>
+                <input type="text" id="noticeTitle">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>类型</label>
+                <select id="noticeType">
+                    <option value="info">信息</option>
+                    <option value="warning">警告</option>
+                    <option value="emergency">紧急</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>内容</label>
+                <textarea id="noticeContent" rows="5"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addNoticeModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveNotice()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 考勤记录模态框 -->
+<div id="addAttendanceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header" id="attendanceModalTitle">记录考勤</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>日期</label>
+                <input type="date" id="attendDate" style="width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>课程</label>
+                <select id="attendCourse" style="width:100%;" onchange="refreshAttendStudentList()">
+                    <option value="">选择课程...</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>考勤学员（可多选）</label>
+                <div id="attendStudentList" style="max-height:200px;overflow-y:auto;border:1px solid #ddd;border-radius:5px;padding:8px;"></div>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>默认状态</label>
+                <select id="attendDefaultStatus" style="width:100%;">
+                    <option value="present">签到</option>
+                    <option value="leave">请假</option>
+                    <option value="absent">旷课</option>
+                </select>
+                <p style="font-size:12px;color:#999;margin-top:5px;">勾选学员后将批量设为默认状态，可单独修改</p>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>备注</label>
+                <input type="text" id="attendRemark" placeholder="可选" style="width:100%;">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addAttendanceModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveAttendance()">保存考勤</button>
+        </div>
+    </div>
+</div>
+
+<!-- 排课模态框 -->
+<div id="addScheduleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header" id="scheduleModalTitle">添加排课</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>课程</label>
+                <select id="scheduleCourse" style="width:100%;">
+                    <option value="">选择课程...</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>教师</label>
+                <select id="scheduleTeacher" style="width:100%;">
+                    <option value="">选择教师...</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>上课日期</label>
+                <input type="date" id="scheduleDate" style="width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>上课时段</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="time" id="scheduleStartTime" value="09:00" style="flex:1;">
+                    <span style="line-height:36px;">至</span>
+                    <input type="time" id="scheduleEndTime" value="11:00" style="flex:1;">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>教室</label>
+                <input type="text" id="scheduleRoom" placeholder="例如：A101" style="width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>备注</label>
+                <input type="text" id="scheduleRemark" placeholder="可选" style="width:100%;">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addScheduleModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveSchedule()">保存排课</button>
+        </div>
+    </div>
+</div>
+
+<!-- 学员档案模态框 -->
+<div id="addProfileModal" class="modal">
+    <div class="modal-content" style="max-width:550px;">
+        <div class="modal-header" id="profileModalTitle">创建档案</div>
+        <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>关联学员</label>
+                <select id="profileStudent" style="width:100%;">
+                    <option value="">选择学员...</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>证书编号</label>
+                <input type="text" id="profileCertNo" placeholder="例如：RP-2026-001" style="width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>培训课程</label>
+                <input type="text" id="profileTrainCourse" placeholder="培训课程名称" style="width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>培训时间</label>
+                <input type="text" id="profileTrainDate" placeholder="例如：2026.03-2026.06" style="width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>培训照片</label>
+                <input type="file" id="profilePhoto" accept="image/*" onchange="previewProfilePhoto(this)" style="width:100%;">
+                <div id="profilePhotoPreview" style="margin-top:8px;"></div>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>备注</label>
+                <textarea id="profileRemark" rows="3" placeholder="学员其他信息..." style="width:100%;"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addProfileModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveProfile()">保存档案</button>
+        </div>
+    </div>
+</div>
+
+<!-- 档案详情查看模态框 -->
+<div id="viewProfileModal" class="modal">
+    <div class="modal-content" style="max-width:550px;">
+        <div class="modal-header">学员档案详情</div>
+        <div id="profileDetailContent" style="padding:10px;"></div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('viewProfileModal')">关闭</button>
+            <button class="btn btn-primary" id="editProfileBtn">编辑档案</button>
+            <button class="btn btn-danger" id="deleteProfileBtn" style="background:#e53e3e;">删除</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 全局数据
+    let currentUser = null;
+    let currentRole = null;
+    let studentExamMode = false;
+    let currentExam = null;
+    let currentExamIndex = -1;
+    let currentExamAnswers = {};
+    let examStartTime = null;
+    let currentExamStudent = null;
+    let scheduleViewDate = new Date();
+    let editingScheduleId = null;
+    let editingProfileId = null;
+    let editingAttendanceIdx = null;
+    
+    // 数据存储
+    let database = {
+        users: {
+            'admin': { password: 'admin123', role: 'admin', displayName: '系统管理员' },
+            'teacher': { password: '123456', role: 'teacher', displayName: '教师' }
+        },
+        students: [
+            { id: 'S001', name: '张三', phone: '13800138000', course: 'JavaScript', status: 'active' },
+            { id: 'S002', name: '李四', phone: '13800138001', course: 'Python', status: 'active' },
+            { id: 'S003', name: '李庆', phone: '13800138002', course: 'JavaScript', status: 'active' }
+        ],
+        courses: [
+            { id: 'C001', name: 'JavaScript基础', teacher: '王老师', hours: 40, price: 999, enrollCount: 15 },
+            { id: 'C002', name: 'Python编程', teacher: '李老师', hours: 50, price: 1299, enrollCount: 20 }
+        ],
+        grades: [
+            { studentId: 'S001', studentName: '张三', course: 'JavaScript', normal: 85, final: 90, composite: 87 },
+            { studentId: 'S002', studentName: '李四', course: 'Python', normal: 88, final: 92, composite: 90 }
+        ],
+        questions: [
+            { id: 'Q001', content: 'JavaScript中var和let的区别是什么？', type: 'single', difficulty: 'medium', level: '初级', options: 'var可以重复声明|let不可以重复声明|var不可以重复声明|let可以重复声明|let不可以重复声明', answer: 'let不可以重复声明' },
+            { id: 'Q002', content: '下列哪些是JavaScript中的基本数据类型？', type: 'multi', difficulty: 'easy', level: '初级', options: 'String|Number|Boolean|Object|Undefined|Null|String,Number,Boolean,Undefined,Null', answer: 'String,Number,Boolean,Undefined,Null' }
+        ],
+        levels: ['初级', '中级', '高级'],
+        exams: [
+            { id: 'E001', name: '前端基础测试', questionCount: 2, timeLimit: 60, participants: 5, status: 'active', questions: [] }
+        ],
+        scores: [],
+        teachers: [
+            { id: 'T001', name: '王老师', experience: 5, courses: 'JavaScript基础' },
+            { id: 'T002', name: '李老师', experience: 8, courses: 'Python编程' }
+        ],
+        fees: [
+            { id: 'F001', studentName: '张三', course: 'JavaScript', amount: 999, date: '2026-03-20', status: 'paid' },
+            { id: 'F002', studentName: '李四', course: 'Python', amount: 1299, date: '2026-03-21', status: 'pending' }
+        ],
+        notices: [
+            { id: 'N001', title: '系统维护通知', type: 'info', content: '周六晚上进行系统维护', date: '2026-03-25' },
+            { id: 'N002', title: '紧急通知', type: 'emergency', content: '所有学员请于周五前完成作业', date: '2026-03-26' }
+        ],
+        attendance: [],
+        schedules: [],
+        profiles: [],
+        lastBackupTime: null
+    };
+    
+    // 登陆逻辑
+    function switchLoginTab(tab) {
+        document.querySelectorAll('.login-tab').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.login-form').forEach(el => el.classList.remove('active'));
+        
+        event.target.classList.add('active');
+        document.getElementById(tab === 'admin' ? 'adminForm' : 'studentForm').classList.add('active');
+    }
+    
+    function doAdminLogin() {
+        const username = document.getElementById('adminUsername').value;
+        const password = document.getElementById('adminPassword').value;
+        
+        if (!username || !password) {
+            showToast('请输入账号和密码', 'error');
+            return;
+        }
+        
+        if (database.users[username] && database.users[username].password === password) {
+            currentUser = username;
+            currentRole = database.users[username].role;
+            studentExamMode = false;
+            enterMainPage();
+        } else {
+            showToast('账号或密码错误', 'error');
+        }
+    }
+    
+    function doStudentLogin() {
+        const name = document.getElementById('studentName').value;
+        const id = document.getElementById('studentID').value;
+        
+        if (!name || !id) {
+            showToast('请输入姓名和学员ID', 'error');
+            return;
+        }
+        
+        const student = database.students.find(s => s.id === id && s.name === name);
+        if (student) {
+            currentUser = name;
+            currentRole = 'student';
+            studentExamMode = true;
+            enterExamPage(student);
+        } else {
+            showToast('学员信息不匹配，请检查', 'error');
+        }
+    }
+    
+    function enterMainPage() {
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('mainPage').style.display = 'flex';
+        const displayName = database.users[currentUser]?.displayName || currentUser;
+        document.getElementById('sidebarUsername').textContent = displayName;
+        document.getElementById('sidebarRole').textContent = currentRole === 'admin' ? '管理员' : '教师';
+        document.getElementById('settingsAdminName').value = displayName;
+        updateDashboard();
+        renderAllData();
+        renderSchedule();
+        renderAttendance();
+        renderProfiles();
+        refreshAttendanceCourseFilter();
+        renderAdminList();
+        updateSettingsInfo();
+    }
+    
+    function enterExamPage(student) {
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('mainPage').style.display = 'none';
+        document.getElementById('examPage').style.display = 'flex';
+        
+        currentUser = student.name;
+        currentExamStudent = student;
+        document.getElementById('examPageStudentName').textContent = student.name;
+        document.getElementById('examPageStudentID').textContent = student.id;
+        
+        loadStudentExams(student.id);
+        loadStudentScores(student.id);
+    }
+    
+    function loadStudentScores(studentId) {
+        const scores = (database.scores || []).filter(s => s.studentId === studentId);
+        const container = document.getElementById('studentScoreList');
+        container.innerHTML = '';
+        
+        if (scores.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#999; padding:30px;">暂无成绩</div>';
+            return;
+        }
+        
+        scores.forEach(s => {
+            const exam = (database.exams || []).find(e => e.id === s.examId);
+            const examName = exam ? exam.name : s.examId;
+            const passScore = exam ? (exam.passScore || 60) : 60;
+            const passed = s.score >= passScore;
+            
+            const scoreItem = document.createElement('div');
+            scoreItem.className = 'exam-item';
+            scoreItem.style.borderColor = passed ? '#48bb78' : '#f56565';
+            scoreItem.innerHTML = `
+                <div class="exam-info-box">
+                    <div class="exam-name">${examName}</div>
+                    <div class="exam-details">
+                        <span>得分：<strong style="color:${passed ? '#48bb78' : '#f56565'}">${s.score}分</strong></span>
+                        <span>及格线：${passScore}分</span>
+                        <span>日期：${s.date || '-'}</span>
+                    </div>
+                </div>
+                <div class="exam-actions">
+                    <span class="exam-status" style="background:${passed ? '#c6f6d5;color:#22543d' : '#fed7d7;color:#742a2f'}">${passed ? '及格' : '未及格'}</span>
+                </div>
+            `;
+            container.appendChild(scoreItem);
+        });
+    }
+    
+    function loadStudentExams(studentId) {
+        const exams = database.exams || [];
+        const examContainer = document.getElementById('studentExamList');
+        examContainer.innerHTML = '';
+        
+        if (exams.length === 0) {
+            examContainer.innerHTML = '<div style="text-align:center; color:#999; padding:30px;">暂无考试</div>';
+            return;
+        }
+        
+        exams.forEach((exam, index) => {
+            const existingScore = database.scores ? database.scores.find(s => s.studentId === studentId && s.examId === exam.id) : null;
+            const status = existingScore ? '已考' : '待考';
+            const statusClass = existingScore ? 'exam-status-done' : 'exam-status-pending';
+            
+            const examItem = document.createElement('div');
+            examItem.className = 'exam-item';
+            examItem.innerHTML = `
+                <div class="exam-info-box">
+                    <div class="exam-name">${exam.name}</div>
+                    <div class="exam-details">
+                        <span>题数：${exam.questionCount}道</span>
+                        <span>时限：${exam.timeLimit}分钟</span>
+                        ${existingScore ? '<span>成绩：' + existingScore.score + '分</span>' : ''}
+                    </div>
+                </div>
+                <div class="exam-actions">
+                    <span class="exam-status ${statusClass}">${status}</span>
+                    <button class="btn btn-primary" onclick="startStudentExam(${index}, '${studentId}')" ${existingScore ? 'disabled' : ''}>进入考试</button>
+                </div>
+            `;
+            examContainer.appendChild(examItem);
+        });
+    }
+    
+    function startStudentExam(examIndex, studentId) {
+        const exam = database.exams[examIndex];
+        currentExam = exam;
+        currentExamIndex = examIndex;
+        currentExamAnswers = {};
+        examStartTime = Date.now();
+        currentExamStudent.id = studentId;
+        
+        // 生成题目：按题型分别从选定级别中随机抽取
+        if (!exam.questions || exam.questions.length === 0) {
+            const examLevels = exam.levels || database.levels;
+            const typeCounts = exam.typeCounts || {};
+            const allQuestions = [];
+            
+            EXAM_QUESTION_TYPES.forEach(t => {
+                const count = typeCounts[t.type] || 0;
+                if (count <= 0) return;
+                
+                // 从选定级别中筛选该题型的题目
+                const pool = (database.questions || []).filter(q => examLevels.includes(q.level) && q.type === t.type);
+                
+                // Fisher-Yates 洗牌
+                const shuffled = [...pool];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                
+                // 抽取指定数量（不超过可用数）
+                const picked = shuffled.slice(0, Math.min(count, shuffled.length));
+                allQuestions.push(...picked);
+            });
+            
+            // 最终再打乱一次所有题目顺序
+            for (let i = allQuestions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+            }
+            
+            exam.questions = allQuestions;
+            exam.questionCount = allQuestions.length;
+            saveData();
+        }
+        
+        document.getElementById('examPage').style.display = 'none';
+        document.getElementById('examTestingPage').style.display = 'flex';
+        
+        document.getElementById('examTitle').textContent = exam.name;
+        
+        showExamQuestion();
+    }
+    
+    function showExamQuestion() {
+        if (!currentExam || !currentExam.questions || currentExam.questions.length === 0) return;
+        
+        const currentQuestionIndex = Object.keys(currentExamAnswers).length;
+        if (currentQuestionIndex >= currentExam.questions.length) {
+            submitStudentExam();
+            return;
+        }
+        
+        const question = currentExam.questions[currentQuestionIndex];
+        document.getElementById('questionNumber').textContent = currentQuestionIndex + 1;
+        document.getElementById('totalQuestionCount').textContent = currentExam.questions.length;
+        
+        const questionContainer = document.getElementById('questionContent');
+        questionContainer.innerHTML = `
+            <div class="question-text"><strong>第${currentQuestionIndex + 1}题：</strong>${question.content}</div>
+            <div class="question-options" id="optionsContainer"></div>
+        `;
+        
+        const optionsContainer = document.getElementById('optionsContainer');
+        const optionsList = (question.options || '').split('|');
+        optionsList.forEach((option, idx) => {
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'option';
+            optionDiv.innerHTML = `
+                <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="currentExamAnswers[${currentQuestionIndex}] = this.value;">
+                <label for="opt${idx}">${option}</label>
+            `;
+            optionsContainer.appendChild(optionDiv);
+        });
+        
+        if (currentExamAnswers[currentQuestionIndex]) {
+            const options = document.querySelectorAll(`input[name="question${currentQuestionIndex}"]`);
+            options.forEach(opt => {
+                if (opt.value === currentExamAnswers[currentQuestionIndex]) {
+                    opt.checked = true;
+                }
+            });
+        }
+        
+        updateExamProgress();
+    }
+    
+    function nextExamQuestion() {
+        showExamQuestion();
+    }
+    
+    function updateExamProgress() {
+        const progress = Math.round((Object.keys(currentExamAnswers).length / currentExam.questions.length) * 100);
+        document.getElementById('examProgress').style.width = progress + '%';
+    }
+    
+    function submitStudentExam() {
+        if (Object.keys(currentExamAnswers).length < currentExam.questions.length) {
+            if (!confirm('还有未答题目，确定要提交吗？')) {
+                return;
+            }
+        }
+        
+        let score = 0;
+        currentExam.questions.forEach((question, idx) => {
+            if (currentExamAnswers[idx] === question.answer) {
+                score += 100 / currentExam.questions.length;
+            }
+        });
+        
+        const finalScore = Math.round(score * 10) / 10;
+        
+        const existingScore = database.scores.find(s => s.studentId === currentExamStudent.id && s.examId === currentExam.id);
+        if (existingScore) {
+            existingScore.score = finalScore;
+            existingScore.date = new Date().toLocaleDateString();
+        } else {
+            database.scores.push({
+                studentId: currentExamStudent.id,
+                examId: currentExam.id,
+                score: finalScore,
+                date: new Date().toLocaleDateString()
+            });
+        }
+        
+        saveData();
+        
+        document.getElementById('examTestingPage').style.display = 'none';
+        document.getElementById('examResultPage').style.display = 'flex';
+        document.getElementById('resultScore').textContent = finalScore;
+        document.getElementById('resultExamName').textContent = currentExam.name;
+    }
+    
+    function backToExamList() {
+        document.getElementById('examResultPage').style.display = 'none';
+        document.getElementById('examPage').style.display = 'flex';
+        loadStudentExams(currentExamStudent.id);
+        loadStudentScores(currentExamStudent.id);
+    }
+    
+    function studentLogout() {
+        if (confirm('确定要退出考试系统吗？')) {
+            studentExamMode = false;
+            currentExamStudent = null;
+            document.getElementById('examPage').style.display = 'none';
+            document.getElementById('examTestingPage').style.display = 'none';
+            document.getElementById('examResultPage').style.display = 'none';
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('studentName').value = '';
+            document.getElementById('studentID').value = '';
+        }
+    }
+    
+    function doLogout() {
+        if (confirm('确定要登出吗？')) {
+            currentUser = null;
+            currentRole = null;
+            studentExamMode = false;
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('mainPage').style.display = 'none';
+            document.getElementById('adminUsername').value = '';
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('studentName').value = '';
+            document.getElementById('studentID').value = '';
+        }
+    }
+    
+    // 页面切换
+    function showPage(pageName) {
+        document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.sidebar-menu button').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(pageName).classList.add('active');
+        event.target.classList.add('active');
+    }
+    
+    // 更新仪表盘
+    function updateDashboard() {
+        document.getElementById('totalStudents').textContent = database.students.length;
+        document.getElementById('totalCourses').textContent = database.courses.length;
+        document.getElementById('totalExams').textContent = database.exams.length;
+        const totalFees = database.fees.reduce((sum, f) => sum + f.amount, 0);
+        document.getElementById('monthlyFees').textContent = '¥' + totalFees.toFixed(0);
+        
+        // 最新通知（最多3条）
+        const noticeEl = document.getElementById('dashNoticeList');
+        const notices = (database.notices || []).slice(-3).reverse();
+        if (notices.length === 0) {
+            noticeEl.innerHTML = '<div style="color:#a0aec0;">暂无通知</div>';
+        } else {
+            noticeEl.innerHTML = notices.map(n => {
+                const typeColor = n.type === 'emergency' ? '#e53e3e' : n.type === 'warning' ? '#dd6b20' : '#2c5282';
+                const typeLabel = n.type === 'emergency' ? '紧急' : n.type === 'warning' ? '警告' : '信息';
+                return `<div style="padding:6px 0;border-bottom:1px solid #edf2f7;cursor:pointer;" onclick="viewNotice('${n.id}')">
+                    <span style="display:inline-block;background:${typeColor};color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;margin-right:6px;">${typeLabel}</span>
+                    <strong>${n.title}</strong>
+                    <span style="float:right;color:#a0aec0;font-size:11px;">${n.date || ''}</span>
+                </div>`;
+            }).join('');
+        }
+        
+        // 考试统计
+        const examStatsEl = document.getElementById('dashExamStats');
+        const totalScores = (database.scores || []).length;
+        const passedScores = (database.scores || []).filter(s => {
+            const exam = (database.exams || []).find(e => e.id === s.examId);
+            return exam && s.score >= (exam.passScore || 60);
+        }).length;
+        const passRate = totalScores > 0 ? (passedScores / totalScores * 100).toFixed(1) : 0;
+        const avgScore = totalScores > 0 ? ((database.scores || []).reduce((s, r) => s + r.score, 0) / totalScores).toFixed(1) : 0;
+        examStatsEl.innerHTML = `
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #edf2f7;">
+                <span>考试总人次</span><strong>${totalScores}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #edf2f7;">
+                <span>通过人次</span><strong style="color:#38a169;">${passedScores}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #edf2f7;">
+                <span>通过率</span><strong>${passRate}%</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;">
+                <span>平均分</span><strong>${avgScore}分</strong>
+            </div>
+        `;
+    }
+    
+    // 查看通知详情
+    function viewNotice(id) {
+        const notice = (database.notices || []).find(n => n.id === id);
+        if (!notice) return;
+        const typeLabel = notice.type === 'emergency' ? '紧急' : notice.type === 'warning' ? '警告' : '信息';
+        alert(`【${typeLabel}】${notice.title}\n\n发布时间：${notice.date}\n\n${notice.content}`);
+    }
+    
+    // 学员管理
+    function renderStudents() {
+        const tbody = document.getElementById('studentsList');
+        tbody.innerHTML = database.students.map(s => `
+            <tr>
+                <td>${s.id}</td>
+                <td>${s.name}</td>
+                <td>${s.phone}</td>
+                <td>${s.course}</td>
+                <td><span style="color: #48bb78; font-weight: 600;">${s.status === 'active' ? '活跃' : '离职'}</span></td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editStudent('${s.id}')">编辑</button>
+                    <button class="btn btn-danger" onclick="deleteStudent('${s.id}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    function filterStudents() {
+        const search = document.getElementById('studentSearch').value.toLowerCase();
+        const filtered = database.students.filter(s => 
+            s.name.toLowerCase().includes(search) || s.id.toLowerCase().includes(search)
+        );
+        const tbody = document.getElementById('studentsList');
+        tbody.innerHTML = filtered.map(s => `
+            <tr>
+                <td>${s.id}</td>
+                <td>${s.name}</td>
+                <td>${s.phone}</td>
+                <td>${s.course}</td>
+                <td><span style="color: #48bb78; font-weight: 600;">${s.status === 'active' ? '活跃' : '离职'}</span></td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editStudent('${s.id}')">编辑</button>
+                    <button class="btn btn-danger" onclick="deleteStudent('${s.id}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    let editingStudentId = null;
+    
+    function openAddStudentModal() {
+        editingStudentId = null;
+        document.getElementById('addStudentModal').querySelector('.modal-header').textContent = '添加学员';
+        document.getElementById('studentName_add').value = '';
+        document.getElementById('studentPhone').value = '';
+        document.getElementById('studentCourse').value = '选择课程...';
+        document.getElementById('addStudentModal').classList.add('active');
+    }
+    
+    function editStudent(id) {
+        const student = database.students.find(s => s.id === id);
+        if (!student) return;
+        editingStudentId = id;
+        document.getElementById('addStudentModal').querySelector('.modal-header').textContent = '编辑学员';
+        document.getElementById('studentName_add').value = student.name;
+        document.getElementById('studentPhone').value = student.phone;
+        document.getElementById('studentCourse').value = student.course;
+        document.getElementById('addStudentModal').classList.add('active');
+    }
+    
+    function saveStudent() {
+        const name = document.getElementById('studentName_add').value;
+        const phone = document.getElementById('studentPhone').value;
+        const course = document.getElementById('studentCourse').value;
+        
+        if (!name || !phone || course === '选择课程...') {
+            showToast('请填写完整信息', 'error');
+            return;
+        }
+        
+        if (editingStudentId) {
+            const student = database.students.find(s => s.id === editingStudentId);
+            if (student) {
+                student.name = name;
+                student.phone = phone;
+                student.course = course;
+            }
+            showToast('学员更新成功', 'success');
+        } else {
+            database.students.push({
+                id: 'S' + String(database.students.length + 1).padStart(3, '0'),
+                name: name, phone: phone, course: course, status: 'active'
+            });
+            showToast('学员添加成功', 'success');
+        }
+        editingStudentId = null;
+        saveData();
+        renderStudents();
+        closeModal('addStudentModal');
+    }
+    
+    function deleteStudent(id) {
+        if (confirm('确定要删除该学员吗？')) {
+            database.students = database.students.filter(s => s.id !== id);
+            saveData();
+            renderStudents();
+            showToast('学员已删除', 'success');
+        }
+    }
+    
+    function exportStudents() {
+        let csv = '\uFEFFID,姓名,联系方式,报名课程,状态\n';
+        database.students.forEach(s => {
+            csv += `${s.id},${s.name},${s.phone},${s.course},${s.status}\n`;
+        });
+        downloadCSV(csv, '学员表.csv');
+    }
+    
+    function importStudents() {
+        document.getElementById('importStudentFile').click();
+    }
+    
+    function handleStudentImport() {
+        const file = document.getElementById('importStudentFile').files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const lines = e.target.result.split('\n');
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i]) continue;
+                const parts = lines[i].split(',');
+                if (parts.length >= 5) {
+                    database.students.push({
+                        id: parts[0],
+                        name: parts[1],
+                        phone: parts[2],
+                        course: parts[3],
+                        status: parts[4]
+                    });
+                }
+            }
+            saveData();
+            renderStudents();
+            showToast('导入成功', 'success');
+        };
+        reader.readAsText(file);
+    }
+    
+    // 课程管理
+    function renderCourses() {
+        const courseSelect = document.getElementById('studentCourse');
+        courseSelect.innerHTML = '<option>选择课程...</option>' + database.courses.map(c => 
+            `<option value="${c.name}">${c.name}</option>`
+        ).join('');
+        
+        const tbody = document.getElementById('coursesList');
+        tbody.innerHTML = database.courses.map(c => `
+            <tr>
+                <td>${c.name}</td>
+                <td>${c.teacher}</td>
+                <td>${c.hours}小时</td>
+                <td>¥${c.price}</td>
+                <td>${c.enrollCount}人</td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editCourse('${c.id}')">编辑</button>
+                    <button class="btn btn-danger" onclick="deleteCourse('${c.id}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    let editingCourseId = null;
+    
+    function openAddCourseModal() {
+        editingCourseId = null;
+        document.getElementById('addCourseModal').querySelector('.modal-header').textContent = '添加课程';
+        document.getElementById('courseName').value = '';
+        document.getElementById('courseTeacher').value = '';
+        document.getElementById('courseHours').value = '';
+        document.getElementById('coursePrice').value = '';
+        document.getElementById('addCourseModal').classList.add('active');
+    }
+    
+    function editCourse(id) {
+        const course = database.courses.find(c => c.id === id);
+        if (!course) return;
+        editingCourseId = id;
+        document.getElementById('addCourseModal').querySelector('.modal-header').textContent = '编辑课程';
+        document.getElementById('courseName').value = course.name;
+        document.getElementById('courseTeacher').value = course.teacher;
+        document.getElementById('courseHours').value = course.hours;
+        document.getElementById('coursePrice').value = course.price;
+        document.getElementById('addCourseModal').classList.add('active');
+    }
+    
+    function saveCourse() {
+        const name = document.getElementById('courseName').value;
+        const teacher = document.getElementById('courseTeacher').value;
+        const hours = document.getElementById('courseHours').value;
+        const price = document.getElementById('coursePrice').value;
+        
+        if (!name || !teacher || !hours || !price) {
+            showToast('请填写完整信息', 'error');
+            return;
+        }
+        
+        if (editingCourseId) {
+            const course = database.courses.find(c => c.id === editingCourseId);
+            if (course) {
+                course.name = name;
+                course.teacher = teacher;
+                course.hours = parseInt(hours);
+                course.price = parseFloat(price);
+            }
+            showToast('课程更新成功', 'success');
+        } else {
+            database.courses.push({
+                id: 'C' + String(database.courses.length + 1).padStart(3, '0'),
+                name: name, teacher: teacher, hours: parseInt(hours), price: parseFloat(price), enrollCount: 0
+            });
+            showToast('课程添加成功', 'success');
+        }
+        editingCourseId = null;
+        saveData();
+        renderCourses();
+        closeModal('addCourseModal');
+    }
+    
+    function deleteCourse(id) {
+        if (confirm('确定要删除该课程吗？')) {
+            database.courses = database.courses.filter(c => c.id !== id);
+            saveData();
+            renderCourses();
+            showToast('课程已删除', 'success');
+        }
+    }
+    
+    // 考试成绩渲染
+    function renderExamScores() {
+        const tbody = document.getElementById('examScoresList');
+        const scores = database.scores || [];
+        
+        if (scores.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px;">暂无考试成绩</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = scores.map(s => {
+            const exam = (database.exams || []).find(e => e.id === s.examId);
+            const examName = exam ? exam.name : s.examId;
+            const passScore = exam ? (exam.passScore || 60) : 60;
+            const passed = s.score >= passScore;
+            const student = (database.students || []).find(st => st.id === s.studentId);
+            const studentName = student ? student.name : s.studentId;
+            
+            return `<tr>
+                <td>${s.studentId}</td>
+                <td>${studentName}</td>
+                <td>${examName}</td>
+                <td><strong style="color:${passed ? '#38a169' : '#e53e3e'}">${s.score}</strong></td>
+                <td>${passScore}</td>
+                <td><span style="color:${passed ? '#38a169' : '#e53e3e'};font-weight:bold;">${passed ? '及格' : '未及格'}</span></td>
+                <td>${s.date || '-'}</td>
+            </tr>`;
+        }).join('');
+    }
+    
+    function filterExamScores() {
+        const search = document.getElementById('examScoresSearch').value.toLowerCase();
+        const scores = (database.scores || []).filter(s => {
+            const exam = (database.exams || []).find(e => e.id === s.examId);
+            const examName = exam ? exam.name : s.examId;
+            const student = (database.students || []).find(st => st.id === s.studentId);
+            const studentName = student ? student.name : s.studentId;
+            return studentName.toLowerCase().includes(search) || examName.toLowerCase().includes(search) || s.studentId.toLowerCase().includes(search);
+        });
+        
+        const tbody = document.getElementById('examScoresList');
+        if (scores.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px;">无匹配成绩</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = scores.map(s => {
+            const exam = (database.exams || []).find(e => e.id === s.examId);
+            const examName = exam ? exam.name : s.examId;
+            const passScore = exam ? (exam.passScore || 60) : 60;
+            const passed = s.score >= passScore;
+            const student = (database.students || []).find(st => st.id === s.studentId);
+            const studentName = student ? student.name : s.studentId;
+            
+            return `<tr>
+                <td>${s.studentId}</td>
+                <td>${studentName}</td>
+                <td>${examName}</td>
+                <td><strong style="color:${passed ? '#38a169' : '#e53e3e'}">${s.score}</strong></td>
+                <td>${passScore}</td>
+                <td><span style="color:${passed ? '#38a169' : '#e53e3e'};font-weight:bold;">${passed ? '及格' : '未及格'}</span></td>
+                <td>${s.date || '-'}</td>
+            </tr>`;
+        }).join('');
+    }
+    
+    function exportExamScores() {
+        const scores = database.scores || [];
+        if (scores.length === 0) {
+            showToast('暂无考试成绩可导出', 'error');
+            return;
+        }
+        let csv = '\uFEFF学员ID,学员名,考试名称,得分,及格线,是否及格,考试日期\n';
+        scores.forEach(s => {
+            const exam = (database.exams || []).find(e => e.id === s.examId);
+            const examName = exam ? exam.name : s.examId;
+            const passScore = exam ? (exam.passScore || 60) : 60;
+            const passed = s.score >= passScore;
+            const student = (database.students || []).find(st => st.id === s.studentId);
+            const studentName = student ? student.name : s.studentId;
+            csv += `${s.studentId},${studentName},${examName},${s.score},${passScore},${passed ? '及格' : '未及格'},${s.date || '-'}\n`;
+        });
+        downloadCSV(csv, '考试成绩表.csv');
+        showToast('考试成绩导出成功', 'success');
+    }
+    
+    // 成绩管理（课程成绩）
+    function renderGrades() {
+        const tbody = document.getElementById('gradesList');
+        tbody.innerHTML = database.grades.map((g, idx) => `
+            <tr>
+                <td>${g.studentName}</td>
+                <td>${g.course}</td>
+                <td>${g.normal}</td>
+                <td>${g.final}</td>
+                <td><strong>${g.composite}</strong></td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editGrade(${idx})">编辑</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    function filterGrades() {
+        const search = document.getElementById('gradesSearch').value.toLowerCase();
+        const filtered = database.grades.filter(g => 
+            g.studentName.toLowerCase().includes(search) || g.course.toLowerCase().includes(search)
+        );
+        const tbody = document.getElementById('gradesList');
+        tbody.innerHTML = filtered.map((g, idx) => {
+            const realIdx = database.grades.indexOf(g);
+            return `<tr>
+                <td>${g.studentName}</td>
+                <td>${g.course}</td>
+                <td>${g.normal}</td>
+                <td>${g.final}</td>
+                <td><strong>${g.composite}</strong></td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editGrade(${realIdx})">编辑</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+    
+    function editGrade(idx) {
+        const g = database.grades[idx];
+        if (!g) return;
+        const newNormal = prompt(`编辑 ${g.studentName} - ${g.course}\n平时成绩：`, g.normal);
+        if (newNormal === null) return;
+        const newFinal = prompt(`期末成绩：`, g.final);
+        if (newFinal === null) return;
+        g.normal = parseInt(newNormal) || g.normal;
+        g.final = parseInt(newFinal) || g.final;
+        g.composite = Math.round((g.normal + g.final) / 2);
+        saveData();
+        renderGrades();
+        showToast('成绩更新成功', 'success');
+    }
+    
+    function exportGrades() {
+        let csv = '\uFEFF学员名,课程,平时成绩,期末成绩,综合成绩\n';
+        database.grades.forEach(g => {
+            csv += `${g.studentName},${g.course},${g.normal},${g.final},${g.composite}\n`;
+        });
+        downloadCSV(csv, '成绩表.csv');
+    }
+    
+    function importGrades() {
+        document.getElementById('importGradesFile').click();
+    }
+    
+    function handleGradesImport() {
+        const file = document.getElementById('importGradesFile').files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const lines = e.target.result.split('\n');
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i]) continue;
+                const parts = lines[i].split(',');
+                if (parts.length >= 5) {
+                    const normal = parseInt(parts[2]);
+                    const final = parseInt(parts[3]);
+                    const composite = Math.round((normal + final) / 2);
+                    database.grades.push({
+                        studentId: 'S' + String(database.grades.length + 1).padStart(3, '0'),
+                        studentName: parts[0],
+                        course: parts[1],
+                        normal: normal,
+                        final: final,
+                        composite: composite
+                    });
+                }
+            }
+            saveData();
+            renderGrades();
+            showToast('成绩导入成功', 'success');
+        };
+        reader.readAsText(file);
+    }
+    
+    // ========== 级别管理 ==========
+    
+    // 初始化级别（确保数据库中有级别数组）
+    function initLevels() {
+        if (!database.levels || database.levels.length === 0) {
+            database.levels = ['初级', '中级', '高级'];
+        }
+        // 给没有级别字段的旧题目补上默认级别
+        database.questions.forEach(q => {
+            if (!q.level) q.level = database.levels[0] || '初级';
+        });
+    }
+    
+    // 刷新所有级别下拉框
+    function refreshLevelSelects() {
+        initLevels();
+        const levels = database.levels;
+        
+        // 题库管理页面 - 级别筛选
+        const levelFilter = document.getElementById('levelFilter');
+        if (levelFilter) {
+            const currentVal = levelFilter.value;
+            levelFilter.innerHTML = '<option value="">全部级别</option>' + 
+                levels.map(l => `<option value="${l}">${l}</option>`).join('');
+            levelFilter.value = currentVal;
+        }
+        
+        // 添加题目模态框 - 级别选择
+        const levelSelect = document.getElementById('questionLevelSelect');
+        if (levelSelect) {
+            const currentVal = levelSelect.value;
+            levelSelect.innerHTML = levels.map(l => `<option value="${l}">${l}</option>`).join('');
+            levelSelect.value = currentVal || (levels[0] || '');
+        }
+        
+        // 级别统计卡片
+        renderLevelStats();
+    }
+    
+    // 渲染级别统计卡片
+    function renderLevelStats() {
+        const container = document.getElementById('levelStats');
+        if (!container) return;
+        
+        const levels = database.levels;
+        const total = database.questions.length;
+        
+        let html = `<div style="background:#fff;padding:12px 18px;border-radius:8px;border:2px solid #667eea;cursor:pointer;text-align:center;min-width:100px;" onclick="document.getElementById('levelFilter').value='';filterQuestions();">
+            <div style="font-size:22px;font-weight:bold;color:#667eea;">${total}</div>
+            <div style="font-size:12px;color:#999;">全部题目</div>
+        </div>`;
+        
+        const colors = ['#48bb78', '#ed8936', '#e53e3e', '#9f7aea', '#38b2ac', '#d69e2e'];
+        levels.forEach((level, idx) => {
+            const count = database.questions.filter(q => q.level === level).length;
+            const color = colors[idx % colors.length];
+            html += `<div style="background:#fff;padding:12px 18px;border-radius:8px;border:2px solid ${color};cursor:pointer;text-align:center;min-width:100px;" onclick="document.getElementById('levelFilter').value='${level}';filterQuestions();">
+                <div style="font-size:22px;font-weight:bold;color:${color};">${count}</div>
+                <div style="font-size:12px;color:#999;">${level}</div>
+            </div>`;
+        });
+        
+        html += `<div style="background:#fff;padding:12px 18px;border-radius:8px;border:2px dashed #cbd5e0;cursor:pointer;text-align:center;min-width:80px;display:flex;align-items:center;justify-content:center;" onclick="promptAddLevel()">
+            <span style="font-size:20px;color:#a0aec0;">＋</span>
+            <span style="font-size:12px;color:#a0aec0;margin-left:4px;">新级别</span>
+        </div>`;
+        
+        container.innerHTML = html;
+    }
+    
+    // 提示新增级别
+    function promptAddLevel() {
+        const name = prompt('请输入新级别名称：');
+        if (name && name.trim()) {
+            const levelName = name.trim();
+            if (database.levels.includes(levelName)) {
+                showToast('该级别已存在', 'error');
+                return;
+            }
+            database.levels.push(levelName);
+            saveData();
+            refreshLevelSelects();
+            showToast(`级别「${levelName}」已添加`, 'success');
+        }
+    }
+    
+    // 删除级别
+    function deleteLevel(levelName) {
+        const count = database.questions.filter(q => q.level === levelName).length;
+        if (count > 0) {
+            showToast(`级别「${levelName}」下有 ${count} 道题目，请先移动或删除`, 'error');
+            return;
+        }
+        if (!confirm(`确定删除级别「${levelName}」吗？`)) return;
+        database.levels = database.levels.filter(l => l !== levelName);
+        saveData();
+        refreshLevelSelects();
+        showToast(`级别「${levelName}」已删除`, 'success');
+    }
+    
+    // 考试级别全选/取消
+    function toggleExamLevelAll(checkbox) {
+        const boxes = document.querySelectorAll('.exam-level-cb');
+        boxes.forEach(b => b.checked = checkbox.checked);
+        updateExamAvailableCount();
+        updateExamTypeSummary();
+    }
+    
+    // 刷新考试模态框的级别选项
+    function refreshExamLevelChecks() {
+        const container = document.getElementById('examLevelChecks');
+        if (!container) return;
+        container.innerHTML = database.levels.map(l => 
+            `<label style="font-weight:normal;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="checkbox" class="exam-level-cb" value="${l}" checked onchange="document.getElementById('examLevelAll').checked=false;updateExamAvailableCount();updateExamTypeSummary();"> ${l}
+            </label>`
+        ).join('');
+    }
+    
+    // 题型配置常量
+    const EXAM_QUESTION_TYPES = [
+        { type: 'single', label: '单选题' },
+        { type: 'multi',  label: '多选题' },
+        { type: 'judge',  label: '判断题' },
+        { type: 'fill',   label: '填空题' }
+    ];
+    
+    // 获取当前选中的级别
+    function getSelectedExamLevels() {
+        const allCheckbox = document.getElementById('examLevelAll');
+        if (allCheckbox && allCheckbox.checked) {
+            return [...(database.levels || [])];
+        }
+        return Array.from(document.querySelectorAll('.exam-level-cb:checked')).map(b => b.value);
+    }
+    
+    // 构建题型数量选择器UI
+    function buildExamTypeCountUI() {
+        const container = document.getElementById('examTypeCountContainer');
+        if (!container) return;
+        
+        container.innerHTML = EXAM_QUESTION_TYPES.map(t => `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <span style="width:60px;font-size:13px;font-weight:600;color:#2d3748;">${t.label}</span>
+                <div style="display:flex;align-items:center;gap:0;border:1px solid #d1d5db;border-radius:6px;overflow:hidden;">
+                    <button type="button" onclick="changeExamTypeCount('${t.type}',-1)" style="border:none;background:#f7fafc;padding:6px 12px;font-size:16px;cursor:pointer;font-weight:bold;color:#2d3748;border-right:1px solid #d1d5db;">−</button>
+                    <input type="number" id="examTypeCount_${t.type}" value="0" min="0" style="border:none;text-align:center;font-size:15px;font-weight:bold;width:50px;padding:6px 4px;outline:none;" oninput="updateExamTypeSummary();updateExamAvailableCount();">
+                    <button type="button" onclick="changeExamTypeCount('${t.type}',1)" style="border:none;background:#f7fafc;padding:6px 12px;font-size:16px;cursor:pointer;font-weight:bold;color:#2d3748;border-left:1px solid #d1d5db;">+</button>
+                </div>
+                <span id="examTypeAvail_${t.type}" style="font-size:12px;color:#718096;">可用0道</span>
+            </div>
+        `).join('');
+        
+        updateExamTypeSummary();
+    }
+    
+    // 调整某题型数量
+    function changeExamTypeCount(type, delta) {
+        const input = document.getElementById('examTypeCount_' + type);
+        let val = parseInt(input.value) || 0;
+        val = val + delta;
+        if (val < 0) val = 0;
+        input.value = val;
+        updateExamTypeSummary();
+        updateExamAvailableCount();
+    }
+    
+    // 更新题型可用数和总计
+    // 更新可用题目数量提示（仅更新各题型的可用数显示）
+    function updateExamAvailableCount() {
+        const selectedLevels = getSelectedExamLevels();
+        
+        // 更新每种题型的可用数
+        EXAM_QUESTION_TYPES.forEach(t => {
+            const count = database.questions.filter(q => selectedLevels.includes(q.level) && q.type === t.type).length;
+            const el = document.getElementById('examTypeAvail_' + t.type);
+            if (el) el.textContent = `可用${count}道`;
+            // 如果当前设定数量超过可用数，标红
+            if (el) {
+                const input = document.getElementById('examTypeCount_' + t.type);
+                if (input && parseInt(input.value) > count) {
+                    el.style.color = '#e53e3e';
+                    el.textContent = `仅${count}道，不足!`;
+                } else {
+                    el.style.color = '#718096';
+                }
+            }
+        });
+    }
+    
+    // 更新总计信息（含可用数刷新，但不再回调 updateExamAvailableCount）
+    function updateExamTypeSummary() {
+        const summaryEl = document.getElementById('examTypeCountSummary');
+        if (!summaryEl) return;
+        
+        const selectedLevels = getSelectedExamLevels();
+        let totalCount = 0;
+        let warnings = [];
+        
+        EXAM_QUESTION_TYPES.forEach(t => {
+            const input = document.getElementById('examTypeCount_' + t.type);
+            const val = input ? parseInt(input.value) || 0 : 0;
+            totalCount += val;
+            
+            const availCount = database.questions.filter(q => selectedLevels.includes(q.level) && q.type === t.type).length;
+            if (val > 0 && val > availCount) {
+                warnings.push(`${t.label}设定${val}道但仅${availCount}道可用`);
+            }
+        });
+        
+        if (totalCount === 0) {
+            summaryEl.innerHTML = '<span style="color:#718096;">请设置各题型数量（至少设置一种题型）</span>';
+        } else {
+            const perScore = totalCount > 0 ? (100 / totalCount).toFixed(1) : 0;
+            let html = `<strong style="color:#2c5282;">总计 ${totalCount} 题，每题 ${perScore} 分，满分 100 分</strong>`;
+            if (warnings.length > 0) {
+                html += `<br><span style="color:#e53e3e;">⚠ ${warnings.join('；')}，将以实际可用数抽题</span>`;
+            }
+            summaryEl.innerHTML = html;
+        }
+    }
+    
+    // 获取各题型设定的数量
+    function getExamTypeCounts() {
+        const counts = {};
+        EXAM_QUESTION_TYPES.forEach(t => {
+            const input = document.getElementById('examTypeCount_' + t.type);
+            counts[t.type] = input ? (parseInt(input.value) || 0) : 0;
+        });
+        return counts;
+    }
+    
+    // 题库管理
+    function renderQuestions() {
+        refreshLevelSelects();
+        const tbody = document.getElementById('questionsList');
+        tbody.innerHTML = database.questions.map(q => `
+            <tr>
+                <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
+                <td>${q.content.substring(0, 50)}${q.content.length > 50 ? '...' : ''}</td>
+                <td><span style="background:#667eea;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">${q.level || '未分级'}</span></td>
+                <td>${getTypeName(q.type)}</td>
+                <td>${getDifficultyName(q.difficulty)}</td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
+                    <button class="btn btn-danger" onclick="deleteQuestion('${q.id}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+        updateBatchDeleteBtn();
+    }
+    
+    function filterQuestions() {
+        const search = document.getElementById('questionSearch').value.toLowerCase();
+        const typeFilter = document.getElementById('typeFilter').value;
+        const levelFilter = document.getElementById('levelFilter').value;
+        const diffFilter = document.getElementById('difficultyFilter').value;
+        const filtered = database.questions.filter(q => 
+            (q.content.toLowerCase().includes(search)) &&
+            (!typeFilter || q.type === typeFilter) &&
+            (!levelFilter || q.level === levelFilter) &&
+            (!diffFilter || q.difficulty === diffFilter)
+        );
+        const tbody = document.getElementById('questionsList');
+        tbody.innerHTML = filtered.map(q => `
+            <tr>
+                <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
+                <td>${q.content.substring(0, 50)}${q.content.length > 50 ? '...' : ''}</td>
+                <td><span style="background:#667eea;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">${q.level || '未分级'}</span></td>
+                <td>${getTypeName(q.type)}</td>
+                <td>${getDifficultyName(q.difficulty)}</td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
+                    <button class="btn btn-danger" onclick="deleteQuestion('${q.id}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+        updateBatchDeleteBtn();
+    }
+    
+    // 全选/取消全选
+    function toggleSelectAll(checkbox) {
+        const boxes = document.querySelectorAll('.question-checkbox');
+        boxes.forEach(b => b.checked = checkbox.checked);
+        updateBatchDeleteBtn();
+    }
+    
+    // 更新批量删除按钮的显示状态
+    function updateBatchDeleteBtn() {
+        const checked = document.querySelectorAll('.question-checkbox:checked');
+        const btn = document.getElementById('batchDeleteBtn');
+        const selectAll = document.getElementById('selectAllQuestions');
+        if (checked.length > 0) {
+            btn.style.display = 'inline-block';
+            btn.textContent = `批量删除（${checked.length}题）`;
+        } else {
+            btn.style.display = 'none';
+        }
+        // 更新全选框状态
+        const allBoxes = document.querySelectorAll('.question-checkbox');
+        if (allBoxes.length > 0 && checked.length === allBoxes.length) {
+            selectAll.checked = true;
+        } else {
+            selectAll.checked = false;
+        }
+    }
+    
+    // 批量删除选中的题目
+    function batchDeleteQuestions() {
+        const checked = document.querySelectorAll('.question-checkbox:checked');
+        if (checked.length === 0) return;
+        if (!confirm(`确定要删除选中的 ${checked.length} 道题目吗？`)) return;
+        
+        const selectedIds = Array.from(checked).map(b => String(b.value));
+        database.questions = database.questions.filter(q => !selectedIds.includes(String(q.id)));
+        saveData();
+        renderQuestions();
+        showToast(`已删除 ${selectedIds.length} 道题目`, 'success');
+    }
+    
+    function getTypeName(type) {
+        const types = { 'single': '单选', 'multi': '多选', 'judge': '判断', 'fill': '填空' };
+        return types[type] || type;
+    }
+    
+    function getDifficultyName(difficulty) {
+        const diffs = { 'easy': '简单', 'medium': '中等', 'hard': '困难' };
+        return diffs[difficulty] || difficulty;
+    }
+    
+    let currentEditingQuestionId = null;
+    
+    function openAddQuestionModal() {
+        currentEditingQuestionId = null;
+        refreshLevelSelects();
+        document.getElementById('addQuestionModal').classList.add('active');
+        document.getElementById('questionContentInput').value = '';
+        document.getElementById('questionOptionsInput').value = '';
+        document.getElementById('questionTypeSelect').value = 'single';
+        document.getElementById('questionDifficultySelect').value = 'easy';
+        document.getElementById('questionLevelSelect').value = database.levels[0] || '初级';
+        
+        // 确保设置正确的标题和按钮
+        const modal = document.getElementById('addQuestionModal');
+        const header = modal.querySelector('.modal-header');
+        const saveBtn = modal.querySelector('.btn-primary');
+        
+        if (header) header.textContent = '添加题目';
+        if (saveBtn) saveBtn.textContent = '保存';
+    }
+    
+    function editQuestion(qid) {
+        const qidStr = String(qid);
+        const question = database.questions.find(q => String(q.id) === qidStr);
+        
+        if (!question) {
+            showToast('题目不存在', 'error');
+            return;
+        }
+        
+        currentEditingQuestionId = qidStr;
+        refreshLevelSelects();
+        
+        const contentInput = document.getElementById('questionContentInput');
+        const optionsInput = document.getElementById('questionOptionsInput');
+        const typeInput = document.getElementById('questionTypeSelect');
+        const difficultyInput = document.getElementById('questionDifficultySelect');
+        const levelInput = document.getElementById('questionLevelSelect');
+        
+        contentInput.value = question.content || '';
+        optionsInput.value = question.options || '';
+        typeInput.value = question.type || 'single';
+        difficultyInput.value = question.difficulty || 'easy';
+        levelInput.value = question.level || database.levels[0] || '初级';
+        
+        const modal = document.getElementById('addQuestionModal');
+        const header = modal.querySelector('.modal-header');
+        const saveBtn = modal.querySelector('.btn-primary');
+        
+        if (header) header.textContent = '编辑题目';
+        if (saveBtn) saveBtn.textContent = '更新';
+        
+        modal.classList.add('active');
+    }
+    
+    function saveQuestion() {
+        const contentInput = document.getElementById('questionContentInput');
+        const optionsInput = document.getElementById('questionOptionsInput');
+        const typeInput = document.getElementById('questionTypeSelect');
+        const difficultyInput = document.getElementById('questionDifficultySelect');
+        const levelInput = document.getElementById('questionLevelSelect');
+        
+        const content = contentInput.value.trim();
+        const type = typeInput.value;
+        const difficulty = difficultyInput.value;
+        const level = levelInput.value || database.levels[0] || '初级';
+        const options = optionsInput.value.trim();
+        
+        if (!content) {
+            showToast('❌ 请填写题目内容', 'error');
+            contentInput.focus();
+            return;
+        }
+        
+        if (!options) {
+            showToast('❌ 请填写选项（用|分隔，最后一项为答案）', 'error');
+            optionsInput.focus();
+            return;
+        }
+        
+        const optionsArray = options.split('|').map(o => o.trim()).filter(o => o);
+        
+        if (optionsArray.length < 2) {
+            showToast('❌ 选项至少需要2项，用|分隔', 'error');
+            optionsInput.focus();
+            return;
+        }
+        
+        const answer = optionsArray[optionsArray.length - 1];
+        const optionsStr = optionsArray.join('|');
+        
+        if (currentEditingQuestionId) {
+            const question = database.questions.find(q => String(q.id) === String(currentEditingQuestionId));
+            
+            if (question) {
+                question.content = content;
+                question.type = type;
+                question.difficulty = difficulty;
+                question.level = level;
+                question.options = optionsStr;
+                question.answer = answer;
+                saveData();
+                showToast('✅ 题目更新成功', 'success');
+            } else {
+                showToast('❌ 题目查找失败', 'error');
+                return;
+            }
+        } else {
+            const newQuestion = {
+                id: 'Q' + String(database.questions.length + 1).padStart(3, '0'),
+                content: content,
+                type: type,
+                difficulty: difficulty,
+                level: level,
+                options: optionsStr,
+                answer: answer
+            };
+            database.questions.push(newQuestion);
+            saveData();
+            showToast('✅ 题目添加成功', 'success');
+        }
+        
+        contentInput.value = '';
+        optionsInput.value = '';
+        typeInput.value = 'single';
+        difficultyInput.value = 'easy';
+        currentEditingQuestionId = null;
+        
+        // 重置模态框标题和按钮
+        const modal = document.getElementById('addQuestionModal');
+        const header = modal.querySelector('.modal-header');
+        const saveBtn = modal.querySelector('.btn-primary');
+        if (header) header.textContent = '添加题目';
+        if (saveBtn) saveBtn.textContent = '保存';
+        
+        renderQuestions();
+        closeModal('addQuestionModal');
+    }
+    
+    function deleteQuestion(id) {
+        if (confirm('确定要删除该题目吗？')) {
+            const idStr = String(id);
+            database.questions = database.questions.filter(q => String(q.id) !== idStr);
+            saveData();
+            renderQuestions();
+            showToast('题目已删除', 'success');
+        }
+    }
+    
+    function exportQuestions() {
+        let csv = '题目ID,题目内容,级别,题型,难度,选项,答案\n';
+        database.questions.forEach(q => {
+            csv += `${q.id},"${(q.content||'').replace(/"/g, '""')}","${q.level||'初级'}",${q.type},${q.difficulty},"${(q.options||'').replace(/"/g, '""')}","${(q.answer||'').replace(/"/g, '""')}"\n`;
+        });
+        downloadCSV(csv, '题库.csv');
+    }
+    
+    function importQuestions() {
+        document.getElementById('importQuestionFile').click();
+    }
+    
+    function handleQuestionImport() {
+        const file = document.getElementById('importQuestionFile').files[0];
+        if (!file) return;
+        
+        // 第一步：先用UTF-8读取
+        const reader1 = new FileReader();
+        reader1.onload = (e1) => {
+            let utf8Content = e1.target.result;
+            
+            // 检测并移除BOM
+            if (utf8Content.charCodeAt(0) === 0xFEFF) {
+                utf8Content = utf8Content.slice(1);
+            }
+            
+            // 智能检测：如果UTF-8读取后内容中出现大量乱码特征，则用GBK重新读取
+            // 检测方法：查看第一行是否包含表头关键词（如果包含则说明编码正确）
+            const firstLine = utf8Content.split(/\r?\n/)[0] || '';
+            const hasGarbled = /[\ufffd\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(utf8Content.substring(0, 500));
+            const hasValidHeader = firstLine.includes('题目') || firstLine.includes('ID') || firstLine.includes('内容');
+            
+            if (hasGarbled || !hasValidHeader) {
+                // UTF-8读取异常，尝试GBK
+                console.log('UTF-8读取异常，尝试GBK编码...');
+                const reader2 = new FileReader();
+                reader2.onload = (e2) => {
+                    let gbkContent = e2.target.result;
+                    if (gbkContent.charCodeAt(0) === 0xFEFF) {
+                        gbkContent = gbkContent.slice(1);
+                    }
+                    handleQuestionImportContent(gbkContent);
+                };
+                reader2.readAsText(file, 'GBK');
+            } else {
+                handleQuestionImportContent(utf8Content);
+            }
+        };
+        reader1.readAsText(file, 'UTF-8');
+    }
+    
+    function handleQuestionImportContent(content) {
+        try {
+            let importCount = 0;
+            const errors = [];
+            
+            // 判断是JSON还是CSV
+            const trimmedContent = content.trim();
+            
+            if (trimmedContent.startsWith('[') || trimmedContent.startsWith('{')) {
+                // JSON格式导入
+                const data = Array.isArray(JSON.parse(trimmedContent)) ? JSON.parse(trimmedContent) : [JSON.parse(trimmedContent)];
+                
+                data.forEach((q, idx) => {
+                    if (q.content && q.options && q.answer) {
+                        const qLevel = q.level || database.levels[0] || '初级';
+                        database.questions.push({
+                            id: q.id || 'Q' + String(database.questions.length + 1).padStart(3, '0'),
+                            content: String(q.content).trim(),
+                            type: q.type || 'single',
+                            difficulty: q.difficulty || 'easy',
+                            level: qLevel,
+                            options: String(q.options).trim(),
+                            answer: String(q.answer).trim()
+                        });
+                        importCount++;
+                    } else {
+                        errors.push(`第${idx+1}行：缺少必要字段`);
+                    }
+                });
+            } else {
+                // CSV格式导入 - 支持多种编码和格式
+                let lines = content.split(/\r?\n/);
+                
+                // 跳过空行和BOM
+                lines = lines.filter(line => line.trim());
+                if (lines.length > 0 && lines[0].charCodeAt(0) === 0xFEFF) {
+                    lines[0] = lines[0].slice(1);
+                }
+                
+                console.log('CSV导入 - 总行数:', lines.length, '第一行:', lines[0]?.substring(0, 50));
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    try {
+                        const fields = parseCSVLine(line);
+                        
+                        // 兼容新旧格式：新格式7列(ID,内容,级别,题型,难度,选项,答案)，旧格式6列(ID,内容,题型,难度,选项,答案)
+                        let id, qContent, qLevel, qType, qDifficulty, qOptions, qAnswer;
+                        
+                        if (fields.length >= 7) {
+                            // 新格式（含级别）
+                            id = fields[0] ? fields[0].trim() : null;
+                            qContent = fields[1] ? fields[1].trim() : '';
+                            qLevel = fields[2] ? fields[2].trim() : database.levels[0];
+                            qType = fields[3] ? fields[3].trim() : 'single';
+                            qDifficulty = fields[4] ? fields[4].trim() : 'easy';
+                            qOptions = fields[5] ? fields[5].trim() : '';
+                            qAnswer = fields[6] ? fields[6].trim() : (qOptions.split('|').slice(-1)[0] || '');
+                        } else if (fields.length >= 6) {
+                            // 旧格式（无级别）
+                            id = fields[0] ? fields[0].trim() : null;
+                            qContent = fields[1] ? fields[1].trim() : '';
+                            qLevel = database.levels[0] || '初级';
+                            qType = fields[2] ? fields[2].trim() : 'single';
+                            qDifficulty = fields[3] ? fields[3].trim() : 'easy';
+                            qOptions = fields[4] ? fields[4].trim() : '';
+                            qAnswer = fields[5] ? fields[5].trim() : (qOptions.split('|').slice(-1)[0] || '');
+                        } else {
+                            errors.push(`第${i+1}行：字段数不足（需要至少6个字段，实际${fields.length}个）`);
+                            continue;
+                        }
+                        
+                        // 确保级别有效，否则使用默认级别
+                        if (!qLevel || !database.levels.includes(qLevel)) {
+                            qLevel = database.levels[0] || '初级';
+                        }
+                        
+                        // 确保级别存在于级别列表中
+                        if (!database.levels.includes(qLevel) && fields.length >= 7 && fields[2]) {
+                            database.levels.push(fields[2].trim());
+                            refreshLevelSelects();
+                        }
+                        
+                        // 验证必要字段
+                        if (!qContent || !qOptions) {
+                            errors.push(`第${i+1}行：题目内容或选项为空`);
+                            continue;
+                        }
+                        
+                        const optionsArray = qOptions.split('|').map(o => o.trim()).filter(o => o);
+                        if (optionsArray.length < 2) {
+                            errors.push(`第${i+1}行：选项数少于2个`);
+                            continue;
+                        }
+                        
+                        // 验证题型和难度
+                        if (!['single', 'multi', 'judge', 'fill'].includes(qType)) {
+                            errors.push(`第${i+1}行：题型"${qType}"无效`);
+                            continue;
+                        }
+                        if (!['easy', 'medium', 'hard'].includes(qDifficulty)) {
+                            errors.push(`第${i+1}行：难度"${qDifficulty}"无效`);
+                            continue;
+                        }
+                        
+                        // 生成ID
+                        const newId = id || 'Q' + String(database.questions.length + 1).padStart(3, '0');
+                        
+                        database.questions.push({
+                            id: newId,
+                            content: qContent,
+                            type: qType,
+                            difficulty: qDifficulty,
+                            level: qLevel,
+                            options: qOptions,
+                            answer: qAnswer || optionsArray[optionsArray.length - 1]
+                        });
+                        importCount++;
+                    } catch (lineErr) {
+                        errors.push(`第${i+1}行：解析错误 - ${lineErr.message}`);
+                        console.error(`第${i+1}行错误:`, lineErr);
+                    }
+                }
+            }
+            
+            if (importCount > 0) {
+                saveData();
+                renderQuestions();
+                let message = `✅ 题库导入成功（共导入 ${importCount} 题）`;
+                if (errors.length > 0) {
+                    message += `，跳过 ${errors.length} 行`;
+                    console.log('导入警告：', errors.join('\n'));
+                }
+                showToast(message, 'success');
+            } else {
+                let errorMsg = '❌ 导入失败：文件中未找到有效题目';
+                if (errors.length > 0) {
+                    errorMsg += `。错误: ${errors.slice(0, 3).join('; ')}${errors.length > 3 ? '...' : ''}`;
+                }
+                showToast(errorMsg, 'error');
+                console.error('所有导入错误:', errors);
+            }
+        } catch (err) {
+            showToast('❌ 导入失败：' + err.message, 'error');
+            console.error('导入异常:', err);
+        }
+    }
+    
+    function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = i + 1 < line.length ? line[i + 1] : '';
+            
+            if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                    // 转义的引号 ""
+                    current += '"';
+                    i++; // 跳过下一个引号
+                } else {
+                    // 切换引号状态
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                // 字段分隔符 - 只在引号外生效
+                result.push(current.trim().replace(/^"|"$/g, ''));
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        // 最后一个字段
+        result.push(current.trim().replace(/^"|"$/g, ''));
+        
+        // 清理结果 - 移除空字段和过滤乱码
+        return result.map(field => {
+            // 移除前后引号
+            let clean = field.replace(/^["']|["']$/g, '');
+            // 移除BOM
+            if (clean.charCodeAt(0) === 0xFEFF) {
+                clean = clean.slice(1);
+            }
+            return clean;
+        }).filter(field => field !== '');  // 过滤空字段
+    }
+    
+    // 考试管理
+    function renderExams() {
+        const tbody = document.getElementById('examsList');
+        tbody.innerHTML = database.exams.map(e => {
+            // 构建题型配置描述
+            let typeDesc = '';
+            const tc = e.typeCounts || {};
+            if (Object.keys(tc).length > 0) {
+                const parts = [];
+                EXAM_QUESTION_TYPES.forEach(t => {
+                    if (tc[t.type] > 0) parts.push(t.label + tc[t.type]);
+                });
+                typeDesc = parts.length > 0 ? parts.join(' + ') : '未配置';
+            } else {
+                typeDesc = e.questionCount + '题(旧版)';
+            }
+            
+            return `<tr>
+                <td>${e.name}</td>
+                <td>${typeDesc}</td>
+                <td>${(e.levels || []).length > 0 ? (e.levels || []).join('、') : '全部'}</td>
+                <td>${e.timeLimit}分钟</td>
+                <td>${e.participants || 0}</td>
+                <td><span style="color: #48bb78;">${e.status === 'active' ? '活跃' : '已结束'}</span></td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editExam('${e.id}')">编辑</button>
+                    <button class="btn btn-danger" onclick="deleteExam('${e.id}')">删除</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+    
+    let editingExamId = null;
+    
+    function openAddExamModal() {
+        editingExamId = null;
+        document.getElementById('addExamModal').querySelector('.modal-header').textContent = '创建考试';
+        document.getElementById('examName').value = '';
+        document.getElementById('examTime').value = '60';
+        document.getElementById('examPassScore').value = '60';
+        refreshExamLevelChecks();
+        buildExamTypeCountUI();
+        updateExamAvailableCount();
+        document.getElementById('addExamModal').classList.add('active');
+    }
+    
+    function editExam(id) {
+        const exam = database.exams.find(e => e.id === id);
+        if (!exam) return;
+        editingExamId = id;
+        document.getElementById('addExamModal').querySelector('.modal-header').textContent = '编辑考试';
+        document.getElementById('examName').value = exam.name;
+        document.getElementById('examTime').value = exam.timeLimit;
+        document.getElementById('examPassScore').value = exam.passScore || 60;
+        refreshExamLevelChecks();
+        // 勾选当前级别
+        const levels = exam.levels || [];
+        const allCb = document.getElementById('examLevelAll');
+        if (allCb) {
+            if (levels.length === 0 || (database.levels && levels.length === database.levels.length)) {
+                allCb.checked = true;
+            } else {
+                allCb.checked = false;
+            }
+        }
+        document.querySelectorAll('.exam-level-cb').forEach(cb => {
+            cb.checked = levels.includes(cb.value) || (allCb && allCb.checked);
+        });
+        // 构建题型UI并回填已保存的题型数量
+        buildExamTypeCountUI();
+        const typeCounts = exam.typeCounts || {};
+        EXAM_QUESTION_TYPES.forEach(t => {
+            const input = document.getElementById('examTypeCount_' + t.type);
+            if (input) input.value = typeCounts[t.type] || 0;
+        });
+        updateExamTypeSummary();
+        document.getElementById('addExamModal').classList.add('active');
+    }
+    
+    function saveExam() {
+        const name = document.getElementById('examName').value;
+        const time = document.getElementById('examTime').value;
+        const score = document.getElementById('examPassScore').value;
+        const typeCounts = getExamTypeCounts();
+        
+        // 获取选中的级别
+        const selectedLevels = getSelectedExamLevels();
+        
+        // 计算总题数
+        const totalCount = Object.values(typeCounts).reduce((a, b) => a + b, 0);
+        
+        if (!name || !time || !score) {
+            showToast('请填写完整信息', 'error');
+            return;
+        }
+        
+        if (selectedLevels.length === 0) {
+            showToast('请至少选择一个题目级别', 'error');
+            return;
+        }
+        
+        if (totalCount === 0) {
+            showToast('请至少设置一种题型的数量', 'error');
+            return;
+        }
+        
+        if (editingExamId) {
+            // 编辑模式：更新已有考试
+            const exam = database.exams.find(e => e.id === editingExamId);
+            if (exam) {
+                exam.name = name;
+                exam.questionCount = totalCount;
+                exam.timeLimit = parseInt(time);
+                exam.passScore = parseInt(score);
+                exam.levels = selectedLevels;
+                exam.typeCounts = typeCounts;
+                // 配置变更，清空已生成的题目以便下次重新生成
+                exam.questions = [];
+            }
+            showToast('考试更新成功', 'success');
+        } else {
+            // 新增模式
+            database.exams.push({
+                id: 'E' + String(database.exams.length + 1).padStart(3, '0'),
+                name: name,
+                questionCount: totalCount,
+                timeLimit: parseInt(time),
+                participants: 0,
+                status: 'active',
+                passScore: parseInt(score),
+                levels: selectedLevels,
+                typeCounts: typeCounts,
+                questions: []
+            });
+            showToast('考试创建成功', 'success');
+        }
+        editingExamId = null;
+        saveData();
+        renderExams();
+        closeModal('addExamModal');
+    }
+    
+    function deleteExam(id) {
+        if (confirm('确定要删除该考试吗？')) {
+            database.exams = database.exams.filter(e => e.id !== id);
+            saveData();
+            renderExams();
+            showToast('考试已删除', 'success');
+        }
+    }
+    
+    // 教师管理
+    function renderTeachers() {
+        const tbody = document.getElementById('teachersList');
+        tbody.innerHTML = database.teachers.map(t => `
+            <tr>
+                <td>${t.name}</td>
+                <td>${t.experience}年</td>
+                <td>${t.courses}</td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editTeacher('${t.id}')">编辑</button>
+                    <button class="btn btn-danger" onclick="deleteTeacher('${t.id}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    let editingTeacherId = null;
+    
+    function openAddTeacherModal() {
+        editingTeacherId = null;
+        document.getElementById('addTeacherModal').querySelector('.modal-header').textContent = '添加教师';
+        document.getElementById('teacherName').value = '';
+        document.getElementById('teacherExperience').value = '';
+        document.getElementById('teacherCourses').value = '';
+        document.getElementById('addTeacherModal').classList.add('active');
+    }
+    
+    function editTeacher(id) {
+        const teacher = database.teachers.find(t => t.id === id);
+        if (!teacher) return;
+        editingTeacherId = id;
+        document.getElementById('addTeacherModal').querySelector('.modal-header').textContent = '编辑教师';
+        document.getElementById('teacherName').value = teacher.name;
+        document.getElementById('teacherExperience').value = teacher.experience;
+        document.getElementById('teacherCourses').value = teacher.courses;
+        document.getElementById('addTeacherModal').classList.add('active');
+    }
+    
+    function saveTeacher() {
+        const name = document.getElementById('teacherName').value;
+        const exp = document.getElementById('teacherExperience').value;
+        const courses = document.getElementById('teacherCourses').value;
+        
+        if (!name || !exp || !courses) {
+            showToast('请填写完整信息', 'error');
+            return;
+        }
+        
+        if (editingTeacherId) {
+            const teacher = database.teachers.find(t => t.id === editingTeacherId);
+            if (teacher) {
+                teacher.name = name;
+                teacher.experience = parseInt(exp);
+                teacher.courses = courses;
+            }
+            showToast('教师信息更新成功', 'success');
+        } else {
+            database.teachers.push({
+                id: 'T' + String(database.teachers.length + 1).padStart(3, '0'),
+                name: name, experience: parseInt(exp), courses: courses
+            });
+            showToast('教师添加成功', 'success');
+        }
+        editingTeacherId = null;
+        saveData();
+        renderTeachers();
+        closeModal('addTeacherModal');
+    }
+    
+    function deleteTeacher(id) {
+        if (confirm('确定要删除该教师吗？')) {
+            database.teachers = database.teachers.filter(t => t.id !== id);
+            saveData();
+            renderTeachers();
+            showToast('教师已删除', 'success');
+        }
+    }
+    
+    // 费用管理
+    function renderFees() {
+        const feeStudent = document.getElementById('feeStudent');
+        feeStudent.innerHTML = '<option>选择学员...</option>' + database.students.map(s => 
+            `<option value="${s.name}">${s.name}</option>`
+        ).join('');
+        
+        const feeCourse = document.getElementById('feeCourse');
+        feeCourse.innerHTML = '<option>选择课程...</option>' + database.courses.map(c => 
+            `<option value="${c.name}">${c.name}</option>`
+        ).join('');
+        
+        const tbody = document.getElementById('feesList');
+        tbody.innerHTML = database.fees.map(f => `
+            <tr>
+                <td>${f.studentName}</td>
+                <td>${f.course}</td>
+                <td>¥${f.amount}</td>
+                <td>${f.date}</td>
+                <td><span style="color: ${f.status === 'paid' ? '#48bb78' : '#ed8936'};">${f.status === 'paid' ? '已支付' : '待支付'}</span></td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editFee('${f.id}')">编辑</button>
+                    <button class="btn btn-danger" onclick="deleteFee('${f.id}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    let editingFeeId = null;
+    
+    function openAddFeeModal() {
+        editingFeeId = null;
+        document.getElementById('addFeeModal').querySelector('.modal-header').textContent = '记录费用';
+        document.getElementById('feeStudent').value = '选择学员...';
+        document.getElementById('feeCourse').value = '选择课程...';
+        document.getElementById('feeAmount').value = '';
+        document.getElementById('feeStatus').value = 'paid';
+        document.getElementById('addFeeModal').classList.add('active');
+    }
+    
+    function editFee(id) {
+        const fee = database.fees.find(f => f.id === id);
+        if (!fee) return;
+        editingFeeId = id;
+        document.getElementById('addFeeModal').querySelector('.modal-header').textContent = '编辑费用';
+        document.getElementById('feeStudent').value = fee.studentName;
+        document.getElementById('feeCourse').value = fee.course;
+        document.getElementById('feeAmount').value = fee.amount;
+        document.getElementById('feeStatus').value = fee.status;
+        document.getElementById('addFeeModal').classList.add('active');
+    }
+    
+    function saveFee() {
+        const student = document.getElementById('feeStudent').value;
+        const course = document.getElementById('feeCourse').value;
+        const amount = document.getElementById('feeAmount').value;
+        const status = document.getElementById('feeStatus').value;
+        
+        if (!student || student === '选择学员...' || !course || course === '选择课程...' || !amount) {
+            showToast('请填写完整信息', 'error');
+            return;
+        }
+        
+        if (editingFeeId) {
+            const fee = database.fees.find(f => f.id === editingFeeId);
+            if (fee) {
+                fee.studentName = student;
+                fee.course = course;
+                fee.amount = parseFloat(amount);
+                fee.status = status;
+            }
+            showToast('费用更新成功', 'success');
+        } else {
+            database.fees.push({
+                id: 'F' + String(database.fees.length + 1).padStart(3, '0'),
+                studentName: student, course: course, amount: parseFloat(amount),
+                date: new Date().toISOString().split('T')[0], status: status
+            });
+            showToast('费用记录成功', 'success');
+        }
+        editingFeeId = null;
+        saveData();
+        renderFees();
+        closeModal('addFeeModal');
+        updateDashboard();
+    }
+    
+    function deleteFee(id) {
+        if (confirm('确定要删除该费用记录吗？')) {
+            database.fees = database.fees.filter(f => f.id !== id);
+            saveData();
+            renderFees();
+            showToast('费用记录已删除', 'success');
+        }
+    }
+    
+    // 通知管理
+    function renderNotices() {
+        const tbody = document.getElementById('noticesList');
+        tbody.innerHTML = database.notices.map(n => `
+            <tr>
+                <td>${n.title}</td>
+                <td>${n.type === 'info' ? '信息' : n.type === 'warning' ? '警告' : '紧急'}</td>
+                <td>${n.date}</td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editNotice('${n.id}')">编辑</button>
+                    <button class="btn btn-danger" onclick="deleteNotice('${n.id}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    let editingNoticeId = null;
+    
+    function openAddNoticeModal() {
+        editingNoticeId = null;
+        document.getElementById('addNoticeModal').querySelector('.modal-header').textContent = '发布通知';
+        document.getElementById('noticeTitle').value = '';
+        document.getElementById('noticeType').value = 'info';
+        document.getElementById('noticeContent').value = '';
+        document.getElementById('addNoticeModal').classList.add('active');
+    }
+    
+    function editNotice(id) {
+        const notice = database.notices.find(n => n.id === id);
+        if (!notice) return;
+        editingNoticeId = id;
+        document.getElementById('addNoticeModal').querySelector('.modal-header').textContent = '编辑通知';
+        document.getElementById('noticeTitle').value = notice.title;
+        document.getElementById('noticeType').value = notice.type;
+        document.getElementById('noticeContent').value = notice.content;
+        document.getElementById('addNoticeModal').classList.add('active');
+    }
+    
+    function saveNotice() {
+        const title = document.getElementById('noticeTitle').value;
+        const type = document.getElementById('noticeType').value;
+        const content = document.getElementById('noticeContent').value;
+        
+        if (!title || !content) {
+            showToast('请填写完整信息', 'error');
+            return;
+        }
+        
+        if (editingNoticeId) {
+            const notice = database.notices.find(n => n.id === editingNoticeId);
+            if (notice) {
+                notice.title = title;
+                notice.type = type;
+                notice.content = content;
+            }
+            showToast('通知更新成功', 'success');
+        } else {
+            database.notices.push({
+                id: 'N' + String(database.notices.length + 1).padStart(3, '0'),
+                title: title, type: type, content: content, date: new Date().toISOString().split('T')[0]
+            });
+            showToast('通知发布成功', 'success');
+        }
+        editingNoticeId = null;
+        saveData();
+        renderNotices();
+        closeModal('addNoticeModal');
+    }
+    
+    function deleteNotice(id) {
+        if (confirm('确定要删除该通知吗？')) {
+            database.notices = database.notices.filter(n => n.id !== id);
+            saveData();
+            renderNotices();
+            showToast('通知已删除', 'success');
+        }
+    }
+    
+    // ==================== 考勤管理 ====================
+    
+    function renderAttendance() {
+        const list = document.getElementById('attendanceList');
+        if (!list) return;
+        let records = database.attendance || [];
+        
+        // 筛选
+        const dateVal = document.getElementById('attendanceDateFilter')?.value;
+        const courseVal = document.getElementById('attendanceCourseFilter')?.value;
+        const statusVal = document.getElementById('attendanceStatusFilter')?.value;
+        
+        if (dateVal) records = records.filter(r => r.date === dateVal);
+        if (courseVal) records = records.filter(r => r.course === courseVal);
+        if (statusVal) records = records.filter(r => r.status === statusVal);
+        
+        records.sort((a, b) => b.date.localeCompare(a.date));
+        
+        if (records.length === 0) {
+            list.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#a0aec0;padding:40px;">暂无考勤记录</td></tr>';
+            return;
+        }
+        
+        const statusMap = { present: '已签到', leave: '请假', absent: '旷课' };
+        const statusClass = { present: 'att-present', leave: 'att-leave', absent: 'att-absent' };
+        
+        list.innerHTML = records.map((r, idx) => `<tr>
+            <td>${r.date}</td>
+            <td>${r.studentName}</td>
+            <td>${r.course}</td>
+            <td><span class="att-status ${statusClass[r.status] || ''}">${statusMap[r.status] || r.status}</span></td>
+            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.remark || '-'}</td>
+            <td>
+                <button class="btn btn-sm" style="background:#edf2f7;color:#4a5568;padding:4px 8px;font-size:12px;border:none;border-radius:4px;cursor:pointer;" onclick="editAttendance(${idx})">编辑</button>
+                <button class="btn btn-sm" style="background:#fed7d7;color:#c53030;padding:4px 8px;font-size:12px;border:none;border-radius:4px;cursor:pointer;" onclick="deleteAttendance(${idx})">删除</button>
+            </td>
+        </tr>`).join('');
+    }
+    
+    function refreshAttendanceCourseFilter() {
+        const sel = document.getElementById('attendanceCourseFilter');
+        if (!sel) return;
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">全部课程</option>' + database.courses.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        sel.value = currentVal;
+    }
+    
+    function openAddAttendanceModal() {
+        editingAttendanceIdx = null;
+        document.getElementById('attendanceModalTitle').textContent = '记录考勤';
+        document.getElementById('attendDate').value = new Date().toISOString().split('T')[0];
+        refreshAttendCourseSelect();
+        refreshAttendStudentList();
+        document.getElementById('attendDefaultStatus').value = 'present';
+        document.getElementById('attendRemark').value = '';
+        document.getElementById('addAttendanceModal').classList.add('active');
+    }
+    
+    function refreshAttendCourseSelect() {
+        const sel = document.getElementById('attendCourse');
+        sel.innerHTML = '<option value="">选择课程...</option>' + database.courses.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+    
+    function refreshAttendStudentList() {
+        const course = document.getElementById('attendCourse').value;
+        const container = document.getElementById('attendStudentList');
+        const students = course ? database.students.filter(s => s.course === course) : database.students;
+        
+        container.innerHTML = students.map(s => `
+            <label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer;">
+                <input type="checkbox" class="attend-student-cb" value="${s.id}" data-name="${s.name}" data-status="present">
+                ${s.name} (${s.id})
+            </label>
+        `).join('');
+    }
+    
+    function editAttendance(idx) {
+        const record = database.attendance[idx];
+        if (!record) return;
+        editingAttendanceIdx = idx;
+        document.getElementById('attendanceModalTitle').textContent = '编辑考勤';
+        document.getElementById('attendDate').value = record.date;
+        refreshAttendCourseSelect();
+        document.getElementById('attendCourse').value = record.course;
+        refreshAttendStudentList();
+        
+        // 高亮当前学员
+        const cbs = document.querySelectorAll('.attend-student-cb');
+        cbs.forEach(cb => {
+            cb.checked = cb.dataset.name === record.studentName;
+            cb.dataset.status = record.status;
+        });
+        
+        document.getElementById('attendDefaultStatus').value = record.status;
+        document.getElementById('attendRemark').value = record.remark || '';
+        document.getElementById('addAttendanceModal').classList.add('active');
+    }
+    
+    function saveAttendance() {
+        const date = document.getElementById('attendDate').value;
+        const course = document.getElementById('attendCourse').value;
+        const defaultStatus = document.getElementById('attendDefaultStatus').value;
+        const remark = document.getElementById('attendRemark').value;
+        
+        if (!date || !course) { showToast('请选择日期和课程', 'error'); return; }
+        
+        const checkedStudents = document.querySelectorAll('.attend-student-cb:checked');
+        if (checkedStudents.length === 0) { showToast('请选择至少一名学员', 'error'); return; }
+        
+        if (editingAttendanceIdx !== null) {
+            // 编辑模式：只更新选中那条
+            const record = database.attendance[editingAttendanceIdx];
+            if (record) {
+                record.date = date;
+                record.course = course;
+                record.status = defaultStatus;
+                record.remark = remark;
+            }
+        } else {
+            // 新增模式：批量添加
+            checkedStudents.forEach(cb => {
+                database.attendance.push({
+                    id: 'ATT' + Date.now() + Math.random().toString(36).substr(2, 4),
+                    date: date,
+                    studentId: cb.value,
+                    studentName: cb.dataset.name,
+                    course: course,
+                    status: cb.dataset.status || defaultStatus,
+                    remark: remark
+                });
+            });
+        }
+        
+        saveData();
+        renderAttendance();
+        closeModal('addAttendanceModal');
+        showToast(editingAttendanceIdx !== null ? '考勤记录已更新' : `已记录 ${checkedStudents.length} 名学员考勤`, 'success');
+        editingAttendanceIdx = null;
+    }
+    
+    function deleteAttendance(idx) {
+        if (!confirm('确定删除此考勤记录？')) return;
+        database.attendance.splice(idx, 1);
+        saveData();
+        renderAttendance();
+        showToast('考勤记录已删除', 'success');
+    }
+    
+    function exportAttendance() {
+        if (!database.attendance || database.attendance.length === 0) { showToast('暂无考勤记录', 'error'); return; }
+        const statusMap = { present: '已签到', leave: '请假', absent: '旷课' };
+        let csv = '日期,学员ID,学员姓名,课程,状态,备注\n';
+        database.attendance.forEach(r => {
+            csv += `${r.date},${r.studentId},${r.studentName},${r.course},${statusMap[r.status] || r.status},${r.remark || ''}\n`;
+        });
+        downloadCSV(csv, '考勤记录.csv');
+    }
+    
+    // ==================== 课程排课日历 ====================
+    
+    function renderSchedule() {
+        const container = document.getElementById('scheduleCalendar');
+        if (!container) return;
+        
+        const year = scheduleViewDate.getFullYear();
+        const month = scheduleViewDate.getMonth();
+        const today = new Date();
+        
+        document.getElementById('scheduleMonthLabel').textContent = `${year}年${month + 1}月`;
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
+        
+        const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+        let html = '<table class="schedule-calendar"><thead><tr>';
+        dayNames.forEach(d => html += `<th>${d}</th>`);
+        html += '</tr></thead><tbody><tr>';
+        
+        // 上月填充
+        for (let i = firstDay - 1; i >= 0; i--) {
+            const day = daysInPrevMonth - i;
+            html += `<td class="other-month"><span class="day-num">${day}</span></td>`;
+        }
+        
+        // 本月
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+            const daySchedules = (database.schedules || []).filter(s => s.date === dateStr);
+            
+            html += `<td class="${isToday ? 'today' : ''}" onclick="openAddScheduleModalForDate('${dateStr}')">`;
+            html += `<span class="day-num">${day}</span>`;
+            daySchedules.forEach(s => {
+                html += `<div class="schedule-item ${s.teacher ? 'has-teacher' : ''}" title="${s.course} ${s.startTime}-${s.endTime}\n${s.room || ''} ${s.teacher || ''}">${s.course} ${s.startTime}</div>`;
+            });
+            html += '</td>';
+            
+            if ((firstDay + day) % 7 === 0 && day < daysInMonth) html += '</tr><tr>';
+        }
+        
+        // 下月填充
+        const remaining = 7 - ((firstDay + daysInMonth) % 7);
+        if (remaining < 7) {
+            for (let i = 1; i <= remaining; i++) {
+                html += `<td class="other-month"><span class="day-num">${i}</span></td>`;
+            }
+        }
+        
+        html += '</tr></tbody></table>';
+        container.innerHTML = html;
+    }
+    
+    function changeScheduleMonth(delta) {
+        scheduleViewDate.setMonth(scheduleViewDate.getMonth() + delta);
+        renderSchedule();
+    }
+    
+    function goScheduleToday() {
+        scheduleViewDate = new Date();
+        renderSchedule();
+    }
+    
+    function openAddScheduleModal() {
+        editingScheduleId = null;
+        document.getElementById('scheduleModalTitle').textContent = '添加排课';
+        document.getElementById('scheduleCourse').innerHTML = '<option value="">选择课程...</option>' + database.courses.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        document.getElementById('scheduleTeacher').innerHTML = '<option value="">选择教师...</option>' + database.teachers.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+        document.getElementById('scheduleDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('scheduleStartTime').value = '09:00';
+        document.getElementById('scheduleEndTime').value = '11:00';
+        document.getElementById('scheduleRoom').value = '';
+        document.getElementById('scheduleRemark').value = '';
+        document.getElementById('addScheduleModal').classList.add('active');
+    }
+    
+    function openAddScheduleModalForDate(dateStr) {
+        openAddScheduleModal();
+        document.getElementById('scheduleDate').value = dateStr;
+    }
+    
+    function saveSchedule() {
+        const course = document.getElementById('scheduleCourse').value;
+        const teacher = document.getElementById('scheduleTeacher').value;
+        const date = document.getElementById('scheduleDate').value;
+        const startTime = document.getElementById('scheduleStartTime').value;
+        const endTime = document.getElementById('scheduleEndTime').value;
+        const room = document.getElementById('scheduleRoom').value;
+        const remark = document.getElementById('scheduleRemark').value;
+        
+        if (!course || !date) { showToast('请选择课程和日期', 'error'); return; }
+        if (startTime >= endTime) { showToast('结束时间必须晚于开始时间', 'error'); return; }
+        
+        const scheduleItem = {
+            id: editingScheduleId || 'SCH' + Date.now(),
+            course, teacher, date, startTime, endTime, room, remark
+        };
+        
+        if (editingScheduleId) {
+            const idx = (database.schedules || []).findIndex(s => s.id === editingScheduleId);
+            if (idx >= 0) database.schedules[idx] = scheduleItem;
+        } else {
+            if (!database.schedules) database.schedules = [];
+            database.schedules.push(scheduleItem);
+        }
+        
+        saveData();
+        renderSchedule();
+        closeModal('addScheduleModal');
+        showToast(editingScheduleId ? '排课已更新' : '排课添加成功', 'success');
+        editingScheduleId = null;
+    }
+    
+    // ==================== 学员档案 ====================
+    
+    function renderProfiles() {
+        const container = document.getElementById('profileCardList');
+        if (!container) return;
+        let profiles = database.profiles || [];
+        
+        const searchVal = (document.getElementById('profileSearch')?.value || '').toLowerCase();
+        if (searchVal) {
+            profiles = profiles.filter(p => 
+                (p.studentName || '').toLowerCase().includes(searchVal) || 
+                (p.certNo || '').toLowerCase().includes(searchVal) ||
+                (p.trainCourse || '').toLowerCase().includes(searchVal)
+            );
+        }
+        
+        if (profiles.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:#a0aec0;padding:60px;grid-column:1/-1;">暂无学员档案</div>';
+            return;
+        }
+        
+        container.innerHTML = profiles.map((p, idx) => `
+            <div class="profile-card" onclick="viewProfileDetail(${idx})">
+                <div class="profile-card-header">
+                    <div class="profile-card-avatar">
+                        ${p.photo ? `<img src="${p.photo}" alt="${p.studentName}">` : (p.studentName || '?').charAt(0)}
+                    </div>
+                    <div class="profile-card-info">
+                        <h4>${p.studentName || '未关联学员'}</h4>
+                        <p>${p.studentId || '-'}</p>
+                    </div>
+                </div>
+                <div class="profile-card-detail">
+                    <div><span>证书编号：</span>${p.certNo || '未颁发'}</div>
+                    <div><span>培训课程：</span>${p.trainCourse || '-'}</div>
+                    <div><span>培训时间：</span>${p.trainDate || '-'}</div>
+                </div>
+                <div class="profile-card-actions">
+                    <button class="btn btn-sm" style="background:#ebf8ff;color:#2b6cb0;padding:4px 12px;font-size:12px;border:none;border-radius:4px;cursor:pointer;" onclick="event.stopPropagation();viewProfileDetail(${idx})">查看详情</button>
+                    <button class="btn btn-sm" style="background:#edf2f7;color:#4a5568;padding:4px 12px;font-size:12px;border:none;border-radius:4px;cursor:pointer;" onclick="event.stopPropagation();editProfile(${idx})">编辑</button>
+                    <button class="btn btn-sm" style="background:#fed7d7;color:#c53030;padding:4px 12px;font-size:12px;border:none;border-radius:4px;cursor:pointer;" onclick="event.stopPropagation();deleteProfile(${idx})">删除</button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function openAddProfileModal() {
+        editingProfileId = null;
+        document.getElementById('profileModalTitle').textContent = '创建档案';
+        document.getElementById('profileStudent').innerHTML = '<option value="">选择学员...</option>' + database.students.map(s => `<option value="${s.id}" data-name="${s.name}">${s.name} (${s.id})</option>`).join('');
+        document.getElementById('profileCertNo').value = '';
+        document.getElementById('profileTrainCourse').value = '';
+        document.getElementById('profileTrainDate').value = '';
+        document.getElementById('profilePhoto').value = '';
+        document.getElementById('profilePhotoPreview').innerHTML = '';
+        document.getElementById('profileRemark').value = '';
+        document.getElementById('addProfileModal').classList.add('active');
+    }
+    
+    function previewProfilePhoto(input) {
+        const preview = document.getElementById('profilePhotoPreview');
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.innerHTML = `<img src="${e.target.result}" class="profile-photo-thumb"><br><button class="btn btn-sm" style="margin-top:6px;background:#fed7d7;color:#c53030;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;" onclick="removeProfilePhoto()">移除照片</button>`;
+            };
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.innerHTML = '';
+        }
+    }
+    
+    function removeProfilePhoto() {
+        document.getElementById('profilePhoto').value = '';
+        document.getElementById('profilePhotoPreview').innerHTML = '';
+    }
+    
+    function saveProfile() {
+        const studentSel = document.getElementById('profileStudent');
+        const studentId = studentSel.value;
+        const studentName = studentSel.selectedOptions[0]?.dataset.name || '';
+        const certNo = document.getElementById('profileCertNo').value;
+        const trainCourse = document.getElementById('profileTrainCourse').value;
+        const trainDate = document.getElementById('profileTrainDate').value;
+        const photoEl = document.getElementById('profilePhotoPreview').querySelector('img');
+        const photo = photoEl ? photoEl.src : '';
+        const remark = document.getElementById('profileRemark').value;
+        
+        if (!studentId) { showToast('请选择关联学员', 'error'); return; }
+        
+        const profileData = { studentId, studentName, certNo, trainCourse, trainDate, photo, remark };
+        
+        if (editingProfileId !== null) {
+            // 编辑
+            const idx = (database.profiles || []).findIndex(p => p.id === editingProfileId);
+            if (idx >= 0) {
+                profileData.id = editingProfileId;
+                database.profiles[idx] = profileData;
+            }
+        } else {
+            // 新增
+            if (!database.profiles) database.profiles = [];
+            profileData.id = 'PF' + Date.now();
+            database.profiles.push(profileData);
+        }
+        
+        saveData();
+        renderProfiles();
+        closeModal('addProfileModal');
+        showToast(editingProfileId !== null ? '档案已更新' : '档案创建成功', 'success');
+        editingProfileId = null;
+    }
+    
+    function editProfile(idx) {
+        const p = database.profiles[idx];
+        if (!p) return;
+        editingProfileId = p.id;
+        document.getElementById('profileModalTitle').textContent = '编辑档案';
+        document.getElementById('profileStudent').innerHTML = '<option value="">选择学员...</option>' + database.students.map(s => `<option value="${s.id}" data-name="${s.name}">${s.name} (${s.id})</option>`).join('');
+        document.getElementById('profileStudent').value = p.studentId;
+        document.getElementById('profileCertNo').value = p.certNo || '';
+        document.getElementById('profileTrainCourse').value = p.trainCourse || '';
+        document.getElementById('profileTrainDate').value = p.trainDate || '';
+        document.getElementById('profileRemark').value = p.remark || '';
+        if (p.photo) {
+            document.getElementById('profilePhotoPreview').innerHTML = `<img src="${p.photo}" class="profile-photo-thumb"><br><button class="btn btn-sm" style="margin-top:6px;background:#fed7d7;color:#c53030;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;" onclick="removeProfilePhoto()">移除照片</button>`;
+        } else {
+            document.getElementById('profilePhotoPreview').innerHTML = '';
+        }
+        document.getElementById('profilePhoto').value = '';
+        document.getElementById('addProfileModal').classList.add('active');
+    }
+    
+    function viewProfileDetail(idx) {
+        const p = database.profiles[idx];
+        if (!p) return;
+        
+        const content = document.getElementById('profileDetailContent');
+        content.innerHTML = `
+            <div style="text-align:center;margin-bottom:16px;">
+                <div class="profile-card-avatar" style="width:80px;height:80px;font-size:30px;margin:0 auto;">
+                    ${p.photo ? `<img src="${p.photo}" style="width:80px;height:80px;">` : (p.studentName || '?').charAt(0)}
+                </div>
+                <h3 style="margin:10px 0 4px;font-size:18px;color:#2d3748;">${p.studentName || '未知'}</h3>
+                <p style="font-size:13px;color:#718096;">学员ID：${p.studentId || '-'}</p>
+            </div>
+            <div style="background:#f7fafc;border-radius:8px;padding:16px;font-size:14px;line-height:2;">
+                <div><strong style="color:#2c5282;">证书编号：</strong>${p.certNo || '未颁发'}</div>
+                <div><strong style="color:#2c5282;">培训课程：</strong>${p.trainCourse || '-'}</div>
+                <div><strong style="color:#2c5282;">培训时间：</strong>${p.trainDate || '-'}</div>
+                <div><strong style="color:#2c5282;">备注：</strong>${p.remark || '无'}</div>
+            </div>
+        `;
+        
+        document.getElementById('editProfileBtn').onclick = function() { closeModal('viewProfileModal'); editProfile(idx); };
+        document.getElementById('deleteProfileBtn').onclick = function() { closeModal('viewProfileModal'); deleteProfile(idx); };
+        document.getElementById('viewProfileModal').classList.add('active');
+    }
+    
+    function deleteProfile(idx) {
+        if (!confirm('确定删除此学员档案？')) return;
+        database.profiles.splice(idx, 1);
+        saveData();
+        renderProfiles();
+        showToast('档案已删除', 'success');
+    }
+    
+    // ==================== 数据备份/恢复 ====================
+    
+    function exportFullBackup() {
+        const backupData = JSON.stringify(database, null, 2);
+        const blob = new Blob([backupData], { type: 'application/json;charset=utf-8' });
+        const link = document.createElement('a');
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+        link.href = URL.createObjectURL(blob);
+        link.download = `培训系统备份_${dateStr}.json`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        
+        database.lastBackupTime = new Date().toISOString();
+        saveData();
+        updateSettingsInfo();
+        showToast('数据备份已导出', 'success');
+    }
+    
+    function importFullBackup() {
+        const file = document.getElementById('importBackupFile').files[0];
+        if (!file) return;
+        
+        if (!confirm('⚠️ 恢复数据将覆盖当前所有数据，确定继续吗？')) {
+            document.getElementById('importBackupFile').value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                
+                // 基本验证
+                if (!imported.students || !imported.courses) {
+                    showToast('文件格式不正确，不是有效的系统备份', 'error');
+                    return;
+                }
+                
+                // 合并数据
+                Object.keys(database).forEach(key => {
+                    if (imported[key] !== undefined) {
+                        database[key] = imported[key];
+                    }
+                });
+                
+                saveData();
+                renderAllData();
+                renderSchedule();
+                renderAttendance();
+                renderProfiles();
+                refreshAttendanceCourseFilter();
+                updateSettingsInfo();
+                showToast('数据恢复成功！建议刷新页面', 'success');
+            } catch (err) {
+                showToast('文件解析失败：' + err.message, 'error');
+            }
+        };
+        reader.readAsText(file);
+        document.getElementById('importBackupFile').value = '';
+    }
+    
+    // ==================== 系统设置 - 管理员管理 ====================
+    
+    function saveAdminSettings() {
+        const displayName = document.getElementById('settingsAdminName').value.trim();
+        const oldPwd = document.getElementById('oldPassword').value;
+        const newPwd = document.getElementById('newPassword').value;
+        const confirmPwd = document.getElementById('confirmPassword').value;
+        
+        if (displayName) {
+            // 将管理员账号名（users的key）改为displayName
+            if (displayName !== currentUser) {
+                const userData = database.users[currentUser];
+                delete database.users[currentUser];
+                database.users[displayName] = userData;
+                currentUser = displayName;
+                saveData(); // 先保存，防止刷新后丢失
+                showToast('管理员账号已更改为「' + displayName + '」，下次登录请使用新账号名', 'success');
+            }
+            database.users[currentUser].displayName = displayName;
+            document.getElementById('sidebarUsername').textContent = displayName;
+        }
+        
+        if (oldPwd || newPwd || confirmPwd) {
+            if (!oldPwd || !newPwd || !confirmPwd) { showToast('修改密码需填写全部密码字段', 'error'); return; }
+            if (database.users[currentUser].password !== oldPwd) { showToast('原密码错误', 'error'); return; }
+            if (newPwd !== confirmPwd) { showToast('新密码不一致', 'error'); return; }
+            if (newPwd.length < 6) { showToast('新密码至少6位', 'error'); return; }
+            database.users[currentUser].password = newPwd;
+        }
+        
+        if (!displayName && !oldPwd) { showToast('请填写要修改的内容', 'error'); return; }
+        
+        saveData();
+        document.getElementById('oldPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+        renderAdminList();
+        showToast('管理员设置已保存', 'success');
+    }
+    
+    function renderAdminList() {
+        const container = document.getElementById('adminList');
+        if (!container) return;
+        
+        let html = '';
+        Object.keys(database.users).forEach(username => {
+            const user = database.users[username];
+            const isCurrent = username === currentUser;
+            const roleName = user.role === 'admin' ? '管理员' : '教师';
+            const displayName = user.displayName || username;
+            
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border-bottom:1px solid #e2e8f0;">
+                <div>
+                    <div style="font-weight:600;font-size:14px;color:#2d3748;">${displayName} ${isCurrent ? '<span style="font-size:11px;color:#4299e1;">(当前)</span>' : ''}</div>
+                    <div style="font-size:12px;color:#a0aec0;">账号：${username} | 角色：${roleName}</div>
+                </div>
+                ${!isCurrent && user.role === 'admin' ? `<button class="btn btn-sm" style="background:#fed7d7;color:#c53030;padding:4px 10px;font-size:12px;border:none;border-radius:4px;cursor:pointer;" onclick="removeAdmin('${username}')">移除</button>` : ''}
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
+    
+    function addNewAdmin() {
+        const username = document.getElementById('newAdminUsername').value.trim();
+        const password = document.getElementById('newAdminPassword').value;
+        
+        if (!username || !password) { showToast('请填写账号和密码', 'error'); return; }
+        if (database.users[username]) { showToast('该账号已存在', 'error'); return; }
+        if (password.length < 6) { showToast('密码至少6位', 'error'); return; }
+        
+        database.users[username] = { password: password, role: 'admin', displayName: username };
+        saveData();
+        document.getElementById('newAdminUsername').value = '';
+        document.getElementById('newAdminPassword').value = '';
+        renderAdminList();
+        showToast('管理员添加成功', 'success');
+    }
+    
+    function removeAdmin(username) {
+        if (!confirm(`确定移除管理员 "${username}" 吗？`)) return;
+        delete database.users[username];
+        saveData();
+        renderAdminList();
+        showToast('管理员已移除', 'success');
+    }
+    
+    function updateSettingsInfo() {
+        const el1 = document.getElementById('lastBackupTime');
+        if (el1) el1.textContent = database.lastBackupTime ? new Date(database.lastBackupTime).toLocaleString('zh-CN') : '未备份';
+        
+        const el2 = document.getElementById('dbSize');
+        if (el2) {
+            const size = new Blob([JSON.stringify(database)]).size;
+            el2.textContent = size > 1024 ? (size / 1024).toFixed(1) + ' KB' : size + ' B';
+        }
+        
+        document.getElementById('infoStudentCount').textContent = database.students.length;
+        document.getElementById('infoCourseCount').textContent = database.courses.length;
+        document.getElementById('infoExamCount').textContent = database.exams.length;
+        document.getElementById('infoQuestionCount').textContent = database.questions.length;
+        document.getElementById('infoAttendanceCount').textContent = (database.attendance || []).length;
+    }
+    
+    // ==================== 快捷登录（链接分享） ====================
+    
+    function switchStudentLoginTab(tab, btn) {
+        document.querySelectorAll('#studentForm .login-tab').forEach(el => el.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        document.getElementById('studentPasswordLogin').style.display = tab === 'password' ? 'block' : 'none';
+        document.getElementById('studentQuickLogin').style.display = tab === 'quicklink' ? 'block' : 'none';
+        
+        if (tab === 'quicklink') {
+            renderQuickLoginLinks();
+        }
+    }
+    
+    function renderQuickLoginLinks() {
+        const container = document.getElementById('quickLoginLinkArea');
+        if (!container) return;
+        
+        const activeExams = database.exams.filter(e => e.status === 'active');
+        
+        if (activeExams.length === 0) {
+            container.innerHTML = '<div class="quick-login-link-expired">暂无进行中的考试<br><span style="font-size:11px;color:#a0aec0;">请联系管理员创建考试后再获取链接</span></div>';
+            return;
+        }
+        
+        const baseUrl = window.location.href.split('?')[0].split('#')[0];
+        
+        let html = '';
+        activeExams.forEach(exam => {
+            const link = baseUrl + '?exam=' + encodeURIComponent(exam.id) + '&t=' + Date.now();
+            html += '<div class="quick-login-link-box" onclick="copyQuickLink(this, \'' + link.replace(/'/g, "\\'") + '\')" title="点击复制链接">' +
+                '<div class="quick-login-link-label"><span>📄 ' + exam.name + '</span><span style="color:#667eea;font-size:11px;">点击复制</span></div>' +
+                '<div class="quick-login-link-text">' + link + '</div>' +
+                '</div>';
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    function copyQuickLink(el, link) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(link).then(() => {
+                showToast('链接已复制，可发送给学员', 'success');
+            }).catch(() => {
+                fallbackCopy(link);
+            });
+        } else {
+            fallbackCopy(link);
+        }
+    }
+    
+    function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            showToast('链接已复制，可发送给学员', 'success');
+        } catch(e) {
+            showToast('复制失败，请手动选择链接复制', 'error');
+        }
+        document.body.removeChild(ta);
+    }
+    
+    // 页面加载时检查URL参数，自动进入考试登录
+    function checkQuickLoginParams() {
+        const params = new URLSearchParams(window.location.search);
+        const examId = params.get('exam');
+        if (!examId) return false;
+        
+        const exam = database.exams.find(e => e.id === examId);
+        if (!exam) return false;
+        
+        // 自动切换到学员登录tab
+        const studentTab = document.querySelector('[onclick*="switchLoginTab"][onclick*="student"]');
+        if (studentTab) studentTab.click();
+        
+        switchStudentLoginTab('password', document.querySelector('#studentForm .login-tab'));
+        showToast('请输入姓名和学员ID进入「' + exam.name + '」考试', 'info');
+        return true;
+    }
+    
+    // ==================== 系统设置 - 密码修改(兼容旧代码) ====================
+    function changePassword() {
+        const oldPassword = document.getElementById('oldPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        if (!oldPassword || !newPassword || !confirmPassword) {
+            showToast('请填写所有密码字段', 'error');
+            return;
+        }
+        
+        if (database.users[currentUser].password !== oldPassword) {
+            showToast('原密码错误', 'error');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            showToast('新密码不一致', 'error');
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            showToast('新密码至少6位', 'error');
+            return;
+        }
+        
+        database.users[currentUser].password = newPassword;
+        saveData();
+        document.getElementById('oldPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+        showToast('密码修改成功！', 'success');
+    }
+    
+    // 模态框操作
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+    
+    // 导出CSV
+    function downloadCSV(csv, filename) {
+        // 添加UTF-8 BOM标记，确保Excel和其他工具正确识别编码
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+    }
+    
+    // 数据持久化
+    const STORAGE_KEY = 'training_management_db';
+
+    // ==================== 云开发配置 ====================
+    const CLOUDBASE_CONFIG = {
+        env: 'ranpeng-training-4ft5k55788574ea',  // 环境ID
+        region: 'ap-shanghai'  // 地域
+    };
+
+    let cloudApp = null;
+    let cloudDb = null;
+    let isCloudReady = false;
+
+    // 初始化云开发
+    async function initCloudBase() {
+        try {
+            // 初始化 CloudBase
+            cloudApp = cloudbase.init(CLOUDBASE_CONFIG);
+            
+            // 匿名登录（控制台已开启）
+            const auth = cloudApp.auth();
+            await auth.anonymousAuthProvider().signIn();
+            
+            cloudDb = cloudApp.database();
+            isCloudReady = true;
+            console.log('✅ 云开发初始化成功（匿名登录）');
+
+            // 从云端加载数据
+            await loadData();
+            return true;
+        } catch (e) {
+            console.error('❌ 云开发初始化失败:', e);
+            console.log('⚠️ 降级到本地存储模式');
+            // 降级到本地存储
+            isCloudReady = false;
+            await loadData();
+            return false;
+        }
+    }
+
+    function saveData() {
+        if (isCloudReady && cloudDb) {
+            // 异步保存到云数据库，不阻塞UI
+            saveToCloud().catch(e => console.warn('云端保存失败:', e));
+        }
+        // 同时保存到本地作为备份
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+        } catch (e) {
+            console.warn('本地保存失败:', e);
+        }
+    }
+
+    async function saveToCloud() {
+        if (!cloudDb) return;
+
+        const dataToSave = JSON.parse(JSON.stringify(database));
+
+        // 将整个database对象存到一个文档中
+        try {
+            const collection = cloudDb.collection('system_data');
+            const docId = 'main_database';
+
+            // 先尝试更新
+            const updateRes = await collection.doc(docId).set(dataToSave);
+            if (updateRes.updated === 0) {
+                // 如果更新失败，尝试创建
+                await collection.add({ _id: docId, ...dataToSave });
+            }
+            console.log('数据已同步到云端');
+        } catch (e) {
+            console.error('云端保存出错:', e);
+        }
+    }
+
+    async function loadData() {
+        // 先尝试从云端加载
+        if (isCloudReady && cloudDb) {
+            try {
+                const collection = cloudDb.collection('system_data');
+                const res = await collection.doc('main_database').get();
+
+                if (res.data && res.data.length > 0) {
+                    const cloudData = res.data[0];
+                    // 合并云端数据
+                    Object.keys(database).forEach(key => {
+                        if (cloudData[key] !== undefined) {
+                            database[key] = cloudData[key];
+                        }
+                    });
+                    console.log('从云端加载数据成功');
+                    return;
+                }
+            } catch (e) {
+                console.warn('云端加载失败，使用本地数据:', e);
+            }
+        }
+
+        // 降级到本地存储
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                Object.keys(database).forEach(key => {
+                    if (parsed[key] !== undefined) {
+                        database[key] = parsed[key];
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('本地加载数据失败:', e);
+        }
+    }
+    
+    // 页面初始化
+    async function initPage() {
+        // 先初始化云开发
+        await initCloudBase();
+        initLevels();
+        // 自动填充第一个管理员账号到登录框
+        const adminKeys = Object.keys(database.users).filter(k => database.users[k].role === 'admin');
+        if (adminKeys.length > 0) {
+            document.getElementById('adminUsername').value = adminKeys[0];
+        }
+        // 检查快捷登录URL参数
+        checkQuickLoginParams();
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', initPage);
+    
+    // 通知提示
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    // 全部渲染
+    function renderAllData() {
+        initLevels();
+        refreshLevelSelects();
+        refreshExamLevelChecks();
+        renderStudents();
+        renderCourses();
+        renderExamScores();
+        renderGrades();
+        renderQuestions();
+        renderExams();
+        renderTeachers();
+        renderFees();
+        renderNotices();
+        renderAttendance();
+        renderProfiles();
+        refreshAttendanceCourseFilter();
+        renderAdminList();
+        updateSettingsInfo();
+    }
+</script>
+
+</body>
+</html>

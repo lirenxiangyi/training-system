@@ -22,9 +22,9 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.8.1 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.8.2 - LOADED AT ' + new Date().toISOString());
     </script>
-    <title>冉鹏工作室培训管理系统 v2.8.1</title>
+    <title>冉鹏工作室培训管理系统 v2.8.2</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -805,8 +805,8 @@
         <p>培训管理系统 v2.5.0</p>
         
         <div class="login-tabs">
-            <button class="login-tab active" onclick="switchLoginTab('admin')">管理员登陆</button>
-            <button class="login-tab" onclick="switchLoginTab('student')">学员考试登陆</button>
+            <button class="login-tab active" onclick="switchLoginTab('admin', this)">管理员登陆</button>
+            <button class="login-tab" onclick="switchLoginTab('student', this)">学员考试登陆</button>
         </div>
         
         <!-- 管理员登陆 -->
@@ -1901,11 +1901,13 @@
     };
     
     // 登陆逻辑
-    function switchLoginTab(tab) {
+    function switchLoginTab(tab, clickedElement) {
         document.querySelectorAll('.login-tab').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.login-form').forEach(el => el.classList.remove('active'));
         
-        event.target.classList.add('active');
+        if (clickedElement) {
+            clickedElement.classList.add('active');
+        }
         document.getElementById(tab === 'admin' ? 'adminForm' : 'studentForm').classList.add('active');
     }
     
@@ -5091,7 +5093,9 @@
         
         // 自动切换到学员登录tab
         const studentTab = document.querySelector('[onclick*="switchLoginTab"][onclick*="student"]');
-        if (studentTab) studentTab.click();
+        if (studentTab) {
+            switchLoginTab('student', studentTab);
+        }
         
         switchStudentLoginTab('password', document.querySelector('#studentForm .login-tab'));
         showToast('请输入姓名和学员ID进入「' + exam.name + '」考试', 'info');

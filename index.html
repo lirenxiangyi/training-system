@@ -22,9 +22,9 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.8.2 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.9.0 - LOADED AT ' + new Date().toISOString());
     </script>
-    <title>冉鹏工作室培训管理系统 v2.8.2</title>
+    <title>冉鹏工作室培训管理系统 v2.9.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -878,6 +878,13 @@
             <div class="exam-list-container" style="margin-top: 24px;">
                 <div class="exam-list-title">我的成绩</div>
                 <div id="studentScoreList"></div>
+            </div>
+            <div class="exam-list-container" style="margin-top: 24px;">
+                <div class="exam-list-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>我的错题集</span>
+                    <span id="wrongQuestionCount" style="font-size: 14px; color: #667eea; font-weight: normal;">0题</span>
+                </div>
+                <div id="wrongQuestionList"></div>
             </div>
         </div>
     </div>
@@ -1897,6 +1904,7 @@
         attendance: [],
         schedules: [],
         profiles: [],
+        wrongQuestions: [],  // 错题集
         lastBackupTime: null
     };
     
@@ -1979,6 +1987,7 @@
         
         loadStudentExams(student.id);
         loadStudentScores(student.id);
+        loadWrongQuestions();  // 加载错题列表
     }
     
     function loadStudentScores(studentId) {
@@ -2391,23 +2400,19 @@
                 feedbackDiv.style.background = '#d1fae5';
                 feedbackDiv.style.color = '#059669';
                 feedbackDiv.innerHTML = '✅ <strong>回答正确！</strong>';
+                
+                // 错题重练答对，移除错题
+                if (currentExam.isWrongQuestionPractice) {
+                    removeWrongQuestion(question.id);
+                }
             } else {
                 feedbackDiv.style.background = '#fee2e2';
                 feedbackDiv.style.color = '#dc2626';
                 feedbackDiv.innerHTML = `❌ <strong>回答错误！</strong><br><br>正确答案：<span style="font-weight:bold;color:#059669;">${correctAnswer}</span>`;
                 
-                // 收集错题
-                if (!window.wrongQuestions) window.wrongQuestions = [];
-                const wrongQ = {
-                    questionId: question.id,
-                    content: question.content,
-                    userAnswer: selectedAnswers,
-                    correctAnswer: correctAnswer,
-                    examId: currentExam.id,
-                    time: new Date().toISOString()
-                };
-                if (!window.wrongQuestions.find(w => w.questionId === question.id)) {
-                    window.wrongQuestions.push(wrongQ);
+                // 保存错题到数据库
+                if (!currentExam.isWrongQuestionPractice) {
+                    saveWrongQuestion(question, selectedAnswers, correctAnswer);
                 }
             }
         }
@@ -2446,24 +2451,19 @@
                     feedbackDiv.style.background = '#d1fae5';
                     feedbackDiv.style.color = '#059669';
                     feedbackDiv.innerHTML = '✅ <strong>回答正确！</strong>';
+                    
+                    // 错题重练答对，移除错题
+                    if (currentExam.isWrongQuestionPractice) {
+                        removeWrongQuestion(question.id);
+                    }
                 } else {
                     feedbackDiv.style.background = '#fee2e2';
                     feedbackDiv.style.color = '#dc2626';
                     feedbackDiv.innerHTML = `❌ <strong>回答错误！</strong><br><br>正确答案：<span style="font-weight:bold;color:#059669;">${correctAnswer}</span>`;
                     
-                    // 收集错题
-                    if (!window.wrongQuestions) window.wrongQuestions = [];
-                    const wrongQ = {
-                        questionId: question.id,
-                        content: question.content,
-                        userAnswer: selectedAnswer,
-                        correctAnswer: correctAnswer,
-                        examId: currentExam.id,
-                        time: new Date().toISOString()
-                    };
-                    // 避免重复添加
-                    if (!window.wrongQuestions.find(w => w.questionId === question.id)) {
-                        window.wrongQuestions.push(wrongQ);
+                    // 保存错题到数据库（非错题重练时）
+                    if (!currentExam.isWrongQuestionPractice) {
+                        saveWrongQuestion(question, selectedAnswer, correctAnswer);
                     }
                 }
             }
@@ -2537,6 +2537,7 @@
         document.getElementById('examPage').style.display = 'flex';
         loadStudentExams(currentExamStudent.id);
         loadStudentScores(currentExamStudent.id);
+        loadWrongQuestions();  // 重新加载错题列表
     }
     
     function studentLogout() {
@@ -2549,6 +2550,200 @@
             document.getElementById('loginPage').style.display = 'flex';
             document.getElementById('studentName').value = '';
             document.getElementById('studentID').value = '';
+        }
+    }
+    
+    // ==================== 错题集功能 ====================
+    
+    // 保存错题到数据库
+    function saveWrongQuestion(question, userAnswer, correctAnswer) {
+        if (!currentExamStudent || !currentExamStudent.id) return;
+        
+        // 初始化错题集
+        if (!database.wrongQuestions) {
+            database.wrongQuestions = [];
+        }
+        
+        // 检查是否已存在该错题
+        const existingIndex = database.wrongQuestions.findIndex(
+            w => w.studentId === currentExamStudent.id && w.questionId === question.id
+        );
+        
+        if (existingIndex >= 0) {
+            // 已存在，更新错误次数和时间
+            database.wrongQuestions[existingIndex].wrongCount++;
+            database.wrongQuestions[existingIndex].lastWrongTime = Date.now();
+            database.wrongQuestions[existingIndex].userAnswer = userAnswer;
+        } else {
+            // 不存在，新增错题
+            database.wrongQuestions.push({
+                id: 'W' + String(database.wrongQuestions.length + 1).padStart(5, '0'),
+                studentId: currentExamStudent.id,
+                studentName: currentExamStudent.name,
+                questionId: question.id,
+                content: question.content,
+                type: question.type,
+                options: question.options || '',
+                correctAnswer: correctAnswer,
+                userAnswer: userAnswer,
+                wrongCount: 1,
+                lastWrongTime: Date.now(),
+                courseName: currentExam.name || '未知课程'
+            });
+        }
+        
+        saveData();
+    }
+    
+    // 移除错题（答对后）
+    function removeWrongQuestion(questionId) {
+        if (!currentExamStudent || !currentExamStudent.id) return;
+        
+        if (!database.wrongQuestions) return;
+        
+        const index = database.wrongQuestions.findIndex(
+            w => w.studentId === currentExamStudent.id && w.questionId === questionId
+        );
+        
+        if (index >= 0) {
+            database.wrongQuestions.splice(index, 1);
+            saveData();
+            showToast('答对了！该题已从错题集中移除', 'success');
+        }
+    }
+    
+    // 加载错题列表
+    function loadWrongQuestions() {
+        if (!currentExamStudent || !currentExamStudent.id) return;
+        
+        const wrongQuestions = (database.wrongQuestions || [])
+            .filter(w => w.studentId === currentExamStudent.id)
+            .sort((a, b) => b.lastWrongTime - a.lastWrongTime);  // 按时间倒序
+        
+        const container = document.getElementById('wrongQuestionList');
+        const countEl = document.getElementById('wrongQuestionCount');
+        
+        countEl.textContent = wrongQuestions.length + '题';
+        
+        if (wrongQuestions.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#999; padding:30px;">暂无错题</div>';
+            return;
+        }
+        
+        // 按题型分组统计
+        const typeStats = {};
+        wrongQuestions.forEach(wq => {
+            const typeName = getTypeName(wq.type);
+            if (!typeStats[typeName]) {
+                typeStats[typeName] = 0;
+            }
+            typeStats[typeName]++;
+        });
+        
+        let html = '<div style="padding: 15px; background: #f7fafc; border-radius: 8px; margin-bottom: 15px;">';
+        html += '<div style="margin-bottom: 10px; color: #4a5568; font-weight: 500;">题型分布：</div>';
+        html += '<div style="display: flex; gap: 15px; flex-wrap: wrap;">';
+        for (const [type, count] of Object.entries(typeStats)) {
+            html += `<span style="background: #edf2f7; padding: 4px 12px; border-radius: 12px; font-size: 13px;">${type}: ${count}题</span>`;
+        }
+        html += '</div></div>';
+        
+        // 错题列表（显示最近10条）
+        html += '<div style="max-height: 300px; overflow-y: auto;">';
+        wrongQuestions.slice(0, 10).forEach((wq, idx) => {
+            const typeColor = {
+                'single': '#3182ce',
+                'multi': '#805ad5',
+                'judge': '#38a169',
+                'fill': '#d69e2e'
+            }[wq.type] || '#718096';
+            
+            const timeAgo = getTimeAgo(wq.lastWrongTime);
+            
+            html += `
+                <div style="background: white; padding: 12px; margin-bottom: 10px; border-radius: 6px; border-left: 3px solid ${typeColor};">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="background: ${typeColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px;">${getTypeName(wq.type)}</span>
+                        <span style="color: #a0aec0; font-size: 12px;">${timeAgo}</span>
+                    </div>
+                    <div style="color: #2d3748; margin-bottom: 8px; line-height: 1.5;">${wq.content}</div>
+                    <div style="color: #718096; font-size: 12px;">
+                        错误 ${wq.wrongCount} 次 | 
+                        你的答案：<span style="color: #e53e3e;">${wq.userAnswer}</span> | 
+                        正确答案：<span style="color: #38a169;">${wq.correctAnswer}</span>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        // 开始错题重练按钮
+        html += `
+            <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="startWrongQuestionPractice()">
+                开始错题重练 (${wrongQuestions.length}题)
+            </button>
+        `;
+        
+        container.innerHTML = html;
+    }
+    
+    // 开始错题重练
+    function startWrongQuestionPractice() {
+        if (!currentExamStudent || !currentExamStudent.id) {
+            showToast('请先登录', 'error');
+            return;
+        }
+        
+        const wrongQuestions = (database.wrongQuestions || [])
+            .filter(w => w.studentId === currentExamStudent.id);
+        
+        if (wrongQuestions.length === 0) {
+            showToast('暂无错题', 'error');
+            return;
+        }
+        
+        // 创建临时考试对象
+        currentExam = {
+            id: 'wrong_question_practice',
+            name: '错题重练',
+            type: 'practice',
+            isWrongQuestionPractice: true,
+            timeLimit: 0,  // 无时间限制
+            questions: wrongQuestions.map(wq => ({
+                id: wq.questionId,
+                content: wq.content,
+                type: wq.type,
+                options: wq.options,
+                answer: wq.correctAnswer
+            })),
+            questionCount: wrongQuestions.length
+        };
+        
+        currentExamIndex = -1;
+        currentExamAnswers = {};
+        examStartTime = Date.now();
+        
+        document.getElementById('examPage').style.display = 'none';
+        document.getElementById('examTestingPage').style.display = 'flex';
+        document.getElementById('examTitle').textContent = '错题重练';
+        
+        currentQuestionIndex = 0;
+        showExamQuestion();
+    }
+    
+    // 时间格式化
+    function getTimeAgo(timestamp) {
+        const now = Date.now();
+        const diff = now - timestamp;
+        
+        if (diff < 60000) {
+            return '刚刚';
+        } else if (diff < 3600000) {
+            return Math.floor(diff / 60000) + '分钟前';
+        } else if (diff < 86400000) {
+            return Math.floor(diff / 3600000) + '小时前';
+        } else {
+            return Math.floor(diff / 86400000) + '天前';
         }
     }
     

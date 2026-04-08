@@ -22,9 +22,9 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.8.0 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.8.1 - LOADED AT ' + new Date().toISOString());
     </script>
-    <title>冉鹏工作室培训管理系统 v2.8.0</title>
+    <title>冉鹏工作室培训管理系统 v2.8.1</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -2243,7 +2243,7 @@
                 const optionDiv = document.createElement('div');
                 optionDiv.className = 'option';
                 optionDiv.innerHTML = `
-                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="currentExamAnswers[${currentQuestionIndex}] = this.value;">
+                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="selectAnswer(${currentQuestionIndex}, '${option}', this)">
                     <label for="opt${idx}">${option}</label>
                 `;
                 optionsContainer.appendChild(optionDiv);
@@ -2263,6 +2263,16 @@
             // 添加多选答案容器
             if (!window.multiAnswers) window.multiAnswers = {};
             window.multiAnswers[currentQuestionIndex] = [];
+            
+            // 日常练习多选题：添加确认按钮
+            if (currentExam && currentExam.type === 'practice') {
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'btn btn-primary';
+                confirmBtn.style.cssText = 'margin-top: 15px;';
+                confirmBtn.textContent = '确认答案';
+                confirmBtn.onclick = () => checkMultiAnswer(currentQuestionIndex);
+                optionsContainer.appendChild(confirmBtn);
+            }
         } else {
             // 单选题：显示单选按钮
             const optionsList = (question.options || '').split('|').filter(o => o.trim());
@@ -2270,11 +2280,19 @@
                 const optionDiv = document.createElement('div');
                 optionDiv.className = 'option';
                 optionDiv.innerHTML = `
-                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="currentExamAnswers[${currentQuestionIndex}] = this.value;">
+                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="selectAnswer(${currentQuestionIndex}, '${option}', this)">
                     <label for="opt${idx}">${option}</label>
                 `;
                 optionsContainer.appendChild(optionDiv);
             });
+        }
+        
+        // 日常练习：显示即时反馈区域
+        if (currentExam && currentExam.type === 'practice') {
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.id = 'practiceFeedback';
+            feedbackDiv.style.cssText = 'margin-top: 20px; padding: 15px; border-radius: 8px; display: none;';
+            questionContainer.appendChild(feedbackDiv);
         }
         
         if (currentExamAnswers[currentQuestionIndex]) {
@@ -2344,6 +2362,124 @@
         } else {
             delete currentExamAnswers[questionIndex];
         }
+        updateExamProgress();
+        updateExamNavGrid();
+    }
+    
+    // 日常练习：多选题即时反馈
+    function checkMultiAnswer(questionIndex) {
+        if (!currentExam || currentExam.type !== 'practice') return;
+        
+        const question = currentExam.questions[questionIndex];
+        const correctAnswer = question.answer;
+        const selectedAnswers = currentExamAnswers[questionIndex] || '';
+        
+        // 检查答案（多选题需要完全匹配）
+        const correctSet = new Set(correctAnswer.split('|').map(s => s.trim()).filter(s => s));
+        const selectedSet = new Set(selectedAnswers.split('|').map(s => s.trim()).filter(s => s));
+        const isCorrect = correctSet.size === selectedSet.size && 
+                         [...correctSet].every(ans => selectedSet.has(ans));
+        
+        // 显示反馈
+        const feedbackDiv = document.getElementById('practiceFeedback');
+        if (feedbackDiv) {
+            feedbackDiv.style.display = 'block';
+            
+            if (isCorrect) {
+                feedbackDiv.style.background = '#d1fae5';
+                feedbackDiv.style.color = '#059669';
+                feedbackDiv.innerHTML = '✅ <strong>回答正确！</strong>';
+            } else {
+                feedbackDiv.style.background = '#fee2e2';
+                feedbackDiv.style.color = '#dc2626';
+                feedbackDiv.innerHTML = `❌ <strong>回答错误！</strong><br><br>正确答案：<span style="font-weight:bold;color:#059669;">${correctAnswer}</span>`;
+                
+                // 收集错题
+                if (!window.wrongQuestions) window.wrongQuestions = [];
+                const wrongQ = {
+                    questionId: question.id,
+                    content: question.content,
+                    userAnswer: selectedAnswers,
+                    correctAnswer: correctAnswer,
+                    examId: currentExam.id,
+                    time: new Date().toISOString()
+                };
+                if (!window.wrongQuestions.find(w => w.questionId === question.id)) {
+                    window.wrongQuestions.push(wrongQ);
+                }
+            }
+        }
+        
+        // 标记选项颜色
+        const allOptions = document.querySelectorAll(`input[name="question${questionIndex}"]`);
+        const correctArray = [...correctSet];
+        allOptions.forEach(opt => {
+            const label = opt.parentElement.querySelector('label');
+            if (correctArray.includes(opt.value)) {
+                label.style.color = '#059669';  // 正确答案绿色
+                label.style.fontWeight = 'bold';
+            } else if (opt.checked && !correctArray.includes(opt.value)) {
+                label.style.color = '#dc2626';  // 错误答案红色
+                label.style.textDecoration = 'line-through';
+            }
+        });
+    }
+    
+    // 日常练习：选择答案后即时反馈
+    function selectAnswer(questionIndex, selectedAnswer, inputElement) {
+        currentExamAnswers[questionIndex] = selectedAnswer;
+        
+        // 如果是日常练习，立即检查答案
+        if (currentExam && currentExam.type === 'practice') {
+            const question = currentExam.questions[questionIndex];
+            const correctAnswer = question.answer;
+            const isCorrect = selectedAnswer === correctAnswer;
+            
+            // 显示反馈区域
+            const feedbackDiv = document.getElementById('practiceFeedback');
+            if (feedbackDiv) {
+                feedbackDiv.style.display = 'block';
+                
+                if (isCorrect) {
+                    feedbackDiv.style.background = '#d1fae5';
+                    feedbackDiv.style.color = '#059669';
+                    feedbackDiv.innerHTML = '✅ <strong>回答正确！</strong>';
+                } else {
+                    feedbackDiv.style.background = '#fee2e2';
+                    feedbackDiv.style.color = '#dc2626';
+                    feedbackDiv.innerHTML = `❌ <strong>回答错误！</strong><br><br>正确答案：<span style="font-weight:bold;color:#059669;">${correctAnswer}</span>`;
+                    
+                    // 收集错题
+                    if (!window.wrongQuestions) window.wrongQuestions = [];
+                    const wrongQ = {
+                        questionId: question.id,
+                        content: question.content,
+                        userAnswer: selectedAnswer,
+                        correctAnswer: correctAnswer,
+                        examId: currentExam.id,
+                        time: new Date().toISOString()
+                    };
+                    // 避免重复添加
+                    if (!window.wrongQuestions.find(w => w.questionId === question.id)) {
+                        window.wrongQuestions.push(wrongQ);
+                    }
+                }
+            }
+            
+            // 标记选项颜色
+            const allOptions = document.querySelectorAll(`input[name="question${questionIndex}"]`);
+            allOptions.forEach(opt => {
+                const label = opt.parentElement.querySelector('label');
+                if (opt.value === correctAnswer) {
+                    label.style.color = '#059669';  // 正确答案绿色
+                    label.style.fontWeight = 'bold';
+                } else if (opt.value === selectedAnswer && !isCorrect) {
+                    label.style.color = '#dc2626';  // 错误答案红色
+                    label.style.textDecoration = 'line-through';
+                }
+            });
+        }
+        
         updateExamProgress();
         updateExamNavGrid();
     }

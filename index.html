@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <script>
     // 全局错误捕获 - 调试用
     window.onerror = function(msg, url, line, col, error) {
@@ -19,9 +22,9 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.5.0 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.8.0 - LOADED AT ' + new Date().toISOString());
     </script>
-    <title>冉鹏工作室培训管理系统 v2.5.0</title>
+    <title>冉鹏工作室培训管理系统 v2.8.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -695,9 +698,103 @@
             color: #aaa;
             margin-top: 5px;
         }
+        
+        /* 手机端适配 */
+        @media screen and (max-width: 768px) {
+            /* 考试界面 - 隐藏右侧答题卡，改为底部浮动 */
+            .exam-page-content > div[style*="display: flex"] {
+                flex-direction: column !important;
+            }
+            
+            /* 隐藏固定宽度的答题卡面板 */
+            .exam-page-content > div[style*="display: flex"] > div[style*="width: 280px"] {
+                display: none !important;
+            }
+            
+            /* 题目区域占满宽度 */
+            .exam-page-content .exam-testing-container {
+                max-width: 100% !important;
+                margin: 0 10px !important;
+                padding: 15px !important;
+            }
+            
+            /* 题目文字大小 */
+            #questionContent {
+                font-size: 16px !important;
+            }
+            
+            #questionContent .exam-question-title {
+                font-size: 18px !important;
+                line-height: 1.6 !important;
+            }
+            
+            /* 选项文字大小 */
+            #questionContent .exam-option {
+                font-size: 16px !important;
+                padding: 12px 15px !important;
+                margin-bottom: 10px !important;
+            }
+            
+            /* 底部显示简化的答题卡 */
+            .exam-testing-container::after {
+                content: "";
+                display: block;
+                height: 60px;
+            }
+            
+            /* 底部固定按钮区域 */
+            .exam-testing-container > div[style*="display: flex; gap: 10px"] {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                background: white !important;
+                padding: 10px !important;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1) !important;
+                z-index: 100 !important;
+                flex-wrap: wrap !important;
+            }
+            
+            /* 登录界面优化 */
+            .login-card {
+                width: 90% !important;
+                padding: 20px !important;
+            }
+            
+            /* 主界面侧边栏隐藏 */
+            .sidebar {
+                position: fixed !important;
+                left: -250px !important;
+                z-index: 1000 !important;
+                transition: left 0.3s !important;
+            }
+            
+            .sidebar.active {
+                left: 0 !important;
+            }
+            
+            .main-content {
+                margin-left: 0 !important;
+            }
+            
+            /* 添加菜单按钮 */
+            .main-content::before {
+                content: "☰";
+                position: fixed;
+                top: 10px;
+                left: 10px;
+                font-size: 24px;
+                z-index: 999;
+                cursor: pointer;
+                background: white;
+                padding: 5px 10px;
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            }
+        }
     </style>
     <!-- 腾讯云开发 SDK -->
-    <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.1/cloudbase.full.js"></script>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js"></script>
 </head>
 <body>
 
@@ -794,17 +891,44 @@
             <div class="exam-timer" id="examTimer">60分钟</div>
         </div>
         <div class="exam-page-content">
-            <div class="exam-testing-container">
-                <div class="exam-progress">
-                    <div id="examProgress" class="exam-progress-bar"></div>
+            <div style="display: flex; gap: 20px;">
+                <!-- 左侧：题目区域 -->
+                <div style="flex: 1;">
+                    <div class="exam-testing-container">
+                        <div class="exam-progress">
+                            <div id="examProgress" class="exam-progress-bar"></div>
+                        </div>
+                        <div class="exam-question-counter">
+                            第 <span id="questionNumber">1</span> / <span id="totalQuestionCount">10</span> 题
+                        </div>
+                        <div id="questionContent"></div>
+                        <div style="display: flex; gap: 10px; justify-content: space-between; margin-top: 20px;">
+                            <button class="btn btn-secondary" onclick="prevExamQuestion()">上一题</button>
+                            <div>
+                                <button class="btn btn-secondary" onclick="nextExamQuestion()">下一题</button>
+                                <button class="btn btn-primary" onclick="submitStudentExam()">提交答卷</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="exam-question-counter">
-                    第 <span id="questionNumber">1</span> / <span id="totalQuestionCount">10</span> 题
-                </div>
-                <div id="questionContent"></div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="nextExamQuestion()">下一题</button>
-                    <button class="btn btn-primary" onclick="submitStudentExam()">提交答卷</button>
+                <!-- 右侧：答题导航面板 -->
+                <div style="width: 280px; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); height: fit-content;">
+                    <div style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #333;">
+                        答题卡 <span id="answeredCount" style="color: #667eea;">(0/0)</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 15px; font-size: 12px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <div style="width: 20px; height: 20px; background: #667eea; border-radius: 4px;"></div>
+                            <span>已答</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <div style="width: 20px; height: 20px; background: #e0e0e0; border-radius: 4px;"></div>
+                            <span>未答</span>
+                        </div>
+                    </div>
+                    <div id="examNavGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                        <!-- 动态生成答题卡 -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -1127,6 +1251,7 @@
                             <th>级别</th>
                             <th>类型</th>
                             <th>难度</th>
+                            <th>答案</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -1303,7 +1428,8 @@
                 <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
                     <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">ℹ️ 系统信息</h3>
                     <div style="font-size:13px;color:#4a5568;line-height:2;">
-                        <p>系统版本：<strong>v2.5.0</strong></p>
+                        <p>系统版本：<strong>v2.5.6-nav</strong></p>
+                        <p>数据模式：<span id="infoDataMode" style="font-weight:bold;">检测中...</span></p>
                         <p>学员数量：<span id="infoStudentCount">0</span></p>
                         <p>课程数量：<span id="infoCourseCount">0</span></p>
                         <p>考试数量：<span id="infoExamCount">0</span></p>
@@ -1321,6 +1447,10 @@
     <div class="modal-content">
         <div class="modal-header">添加学员</div>
         <div class="form">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>学员ID <span style="color:#e53e3e;">*</span></label>
+                <input type="text" id="studentIdInput" placeholder="例如：S001">
+            </div>
             <div class="form-group" style="margin-bottom: 15px;">
                 <label>姓名</label>
                 <input type="text" id="studentName_add">
@@ -1428,6 +1558,17 @@
                 <input type="text" id="examName">
             </div>
             <div class="form-group" style="margin-bottom: 15px;">
+                <label>考试类型</label>
+                <select id="examType" onchange="toggleExamTypeFields()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
+                    <option value="formal">📝 正式考试</option>
+                    <option value="mock">🔄 模拟考试</option>
+                    <option value="practice">📚 日常练习</option>
+                </select>
+                <div style="font-size:11px;color:#718096;margin-top:4px;">
+                    <span id="examTypeHint">正式考试：成绩计入档案，限考试次数</span>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
                 <label>抽题范围（题目级别）</label>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <label style="font-weight:normal;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
@@ -1451,6 +1592,14 @@
                     <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
                         <label>及格分数</label>
                         <input type="number" id="examPassScore" value="60">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+                        <label>允许考试次数</label>
+                        <select id="examMaxAttempts" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
+                            <option value="1">仅1次</option>
+                            <option value="2">最多2次</option>
+                            <option value="3">最多3次</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -1870,31 +2019,73 @@
         const exams = database.exams || [];
         const examContainer = document.getElementById('studentExamList');
         examContainer.innerHTML = '';
-        
+
         if (exams.length === 0) {
             examContainer.innerHTML = '<div style="text-align:center; color:#999; padding:30px;">暂无考试</div>';
             return;
         }
-        
+
         exams.forEach((exam, index) => {
-            const existingScore = database.scores ? database.scores.find(s => s.studentId === studentId && s.examId === exam.id) : null;
-            const status = existingScore ? '已考' : '待考';
-            const statusClass = existingScore ? 'exam-status-done' : 'exam-status-pending';
-            
+            const examType = exam.type || 'formal';  // 获取考试类型
+
+            // 统计该学员已经考过这个考试的次数
+            const existingScores = database.scores ? database.scores.filter(s => s.studentId === studentId && s.examId === exam.id) : [];
+            const attemptCount = existingScores.length;
+            const maxAttempts = exam.maxAttempts || 1;
+
+            // 模拟考试和练习不限次数，只有正式考试才限制
+            const canTakeExam = examType === 'formal' ? attemptCount < maxAttempts : true;
+
+            // 获取最高分（正式考试和模拟考试显示）
+            const bestScore = existingScores.length > 0 ? Math.max(...existingScores.map(s => s.score)) : null;
+
+            // 考试类型标签
+            const typeLabels = {
+                'formal': '<span style="background:#4299e1;color:white;padding:2px 6px;border-radius:3px;font-size:11px;margin-left:8px;">正式</span>',
+                'mock': '<span style="background:#9f7aea;color:white;padding:2px 6px;border-radius:3px;font-size:11px;margin-left:8px;">模拟</span>',
+                'practice': '<span style="background:#48bb78;color:white;padding:2px 6px;border-radius:3px;font-size:11px;margin-left:8px;">练习</span>'
+            };
+            const typeLabel = typeLabels[examType] || typeLabels['formal'];
+
+            // 状态显示
+            let status = '';
+            let statusClass = '';
+            if (examType === 'practice') {
+                status = attemptCount > 0 ? `已练习${attemptCount}次` : '待练习';
+                statusClass = attemptCount > 0 ? 'exam-status-done' : 'exam-status-pending';
+            } else if (examType === 'mock') {
+                status = attemptCount > 0 ? `已模拟${attemptCount}次` : '待模拟';
+                statusClass = attemptCount > 0 ? 'exam-status-done' : 'exam-status-pending';
+            } else {
+                status = attemptCount > 0 ? `已考${attemptCount}次` : '待考';
+                statusClass = attemptCount > 0 ? 'exam-status-done' : 'exam-status-pending';
+            }
+
             const examItem = document.createElement('div');
             examItem.className = 'exam-item';
+
+            // 根据考试类型显示不同的信息
+            let detailsHTML = `<span>题数：${exam.questionCount}道</span>`;
+            if (exam.timeLimit > 0) {
+                detailsHTML += `<span>时限：${exam.timeLimit}分钟</span>`;
+            } else {
+                detailsHTML += `<span style="color:#48bb78;">无时间限制</span>`;
+            }
+            if (examType === 'formal') {
+                detailsHTML += `<span>允许次数：${maxAttempts}次</span>`;
+            }
+            if (bestScore !== null && examType !== 'practice') {
+                detailsHTML += `<span style="color:#48bb78;font-weight:bold;">最高分：${bestScore}分</span>`;
+            }
+
             examItem.innerHTML = `
                 <div class="exam-info-box">
-                    <div class="exam-name">${exam.name}</div>
-                    <div class="exam-details">
-                        <span>题数：${exam.questionCount}道</span>
-                        <span>时限：${exam.timeLimit}分钟</span>
-                        ${existingScore ? '<span>成绩：' + existingScore.score + '分</span>' : ''}
-                    </div>
+                    <div class="exam-name">${exam.name} ${typeLabel}</div>
+                    <div class="exam-details">${detailsHTML}</div>
                 </div>
                 <div class="exam-actions">
                     <span class="exam-status ${statusClass}">${status}</span>
-                    <button class="btn btn-primary" onclick="startStudentExam(${index}, '${studentId}')" ${existingScore ? 'disabled' : ''}>进入考试</button>
+                    <button class="btn btn-primary" onclick="startStudentExam(${index}, '${studentId}')" ${!canTakeExam ? 'disabled title="已达到最大考试次数"' : ''}>${canTakeExam ? '进入考试' : '已达上限'}</button>
                 </div>
             `;
             examContainer.appendChild(examItem);
@@ -1909,12 +2100,13 @@
         examStartTime = Date.now();
         currentExamStudent.id = studentId;
         
-        // 生成题目：按题型分别从选定级别中随机抽取
+        // 生成题目：按题型分别从选定级别中随机抽取，保持题型顺序（单选→多选→判断→填空）
         if (!exam.questions || exam.questions.length === 0) {
             const examLevels = exam.levels || database.levels;
             const typeCounts = exam.typeCounts || {};
             const allQuestions = [];
             
+            // 按题型顺序抽取，不再打乱（保持 单选→多选→判断→填空 的顺序）
             EXAM_QUESTION_TYPES.forEach(t => {
                 const count = typeCounts[t.type] || 0;
                 if (count <= 0) return;
@@ -1922,7 +2114,7 @@
                 // 从选定级别中筛选该题型的题目
                 const pool = (database.questions || []).filter(q => examLevels.includes(q.level) && q.type === t.type);
                 
-                // Fisher-Yates 洗牌
+                // Fisher-Yates 洗牌（同一题型内随机）
                 const shuffled = [...pool];
                 for (let i = shuffled.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -1934,11 +2126,11 @@
                 allQuestions.push(...picked);
             });
             
-            // 最终再打乱一次所有题目顺序
-            for (let i = allQuestions.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
-            }
+            // 【关键修改】不再打乱题型顺序，保持 单选→多选→判断→填空 的顺序
+            // for (let i = allQuestions.length - 1; i > 0; i--) {
+            //     const j = Math.floor(Math.random() * (i + 1));
+            //     [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+            // }
             
             exam.questions = allQuestions;
             exam.questionCount = allQuestions.length;
@@ -1950,39 +2142,140 @@
         
         document.getElementById('examTitle').textContent = exam.name;
         
+        // 初始化题目索引
+        currentQuestionIndex = 0;
         showExamQuestion();
     }
     
-    function showExamQuestion() {
+    // 当前题目索引（改为全局变量）
+    var currentQuestionIndex = 0;
+    
+    function showExamQuestion(targetIndex) {
         if (!currentExam || !currentExam.questions || currentExam.questions.length === 0) return;
         
-        const currentQuestionIndex = Object.keys(currentExamAnswers).length;
+        // 如果指定了目标索引，跳转到该题
+        if (typeof targetIndex === 'number') {
+            currentQuestionIndex = targetIndex;
+        }
+        
+        // 检查索引范围
+        if (currentQuestionIndex < 0) currentQuestionIndex = 0;
         if (currentQuestionIndex >= currentExam.questions.length) {
             submitStudentExam();
             return;
         }
         
         const question = currentExam.questions[currentQuestionIndex];
+        
+        // 【新增】检测题型变化，显示题型分组标题
+        let typeHeaderHtml = '';
+        if (currentQuestionIndex === 0 || currentExam.questions[currentQuestionIndex - 1].type !== question.type) {
+            // 新题型开始，显示分组标题
+            const typeName = getTypeName(question.type);
+            const typeColor = {
+                'single': '#667eea',
+                'multi': '#f093fb',
+                'judge': '#4facfe',
+                'fill': '#43e97b'
+            }[question.type] || '#667eea';
+            
+            // 统计该题型有多少题
+            let typeCount = 0;
+            for (let i = currentQuestionIndex; i < currentExam.questions.length; i++) {
+                if (currentExam.questions[i].type === question.type) typeCount++;
+                else break;
+            }
+            
+            typeHeaderHtml = `
+                <div style="background:linear-gradient(135deg,${typeColor}22,${typeColor}11);border-left:4px solid ${typeColor};padding:12px 16px;margin-bottom:16px;border-radius:6px;">
+                    <div style="font-size:16px;font-weight:bold;color:${typeColor};display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:20px;">${getTypeIcon(question.type)}</span>
+                        ${typeName}（共${typeCount}题）
+                    </div>
+                </div>
+            `;
+        }
+        
         document.getElementById('questionNumber').textContent = currentQuestionIndex + 1;
         document.getElementById('totalQuestionCount').textContent = currentExam.questions.length;
         
+        // 更新答题卡
+        updateExamNavGrid();
+        
+        // 获取题目类型名称
+        const typeName = getTypeName(question.type);
+        const typeColor = {
+            'single': '#667eea',
+            'multi': '#f093fb',
+            'judge': '#4facfe',
+            'fill': '#43e97b'
+        }[question.type] || '#667eea';
+        
         const questionContainer = document.getElementById('questionContent');
         questionContainer.innerHTML = `
-            <div class="question-text"><strong>第${currentQuestionIndex + 1}题：</strong>${question.content}</div>
+            ${typeHeaderHtml}
+            <div class="question-text">
+                <span style="background:${typeColor};color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;margin-right:10px;">${typeName}</span>
+                <strong>第${currentQuestionIndex + 1}题：</strong>${question.content}
+            </div>
             <div class="question-options" id="optionsContainer"></div>
         `;
         
         const optionsContainer = document.getElementById('optionsContainer');
-        const optionsList = (question.options || '').split('|');
-        optionsList.forEach((option, idx) => {
-            const optionDiv = document.createElement('div');
-            optionDiv.className = 'option';
-            optionDiv.innerHTML = `
-                <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="currentExamAnswers[${currentQuestionIndex}] = this.value;">
-                <label for="opt${idx}">${option}</label>
+        
+        // 根据题目类型显示不同的选项
+        if (question.type === 'fill') {
+            // 填空题：显示输入框
+            const inputDiv = document.createElement('div');
+            inputDiv.className = 'option';
+            inputDiv.innerHTML = `
+                <input type="text" id="fillAnswer" placeholder="请输入答案" 
+                       style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:16px;"
+                       onchange="currentExamAnswers[${currentQuestionIndex}] = this.value;"
+                       oninput="currentExamAnswers[${currentQuestionIndex}] = this.value;"
+                       value="${currentExamAnswers[currentQuestionIndex] || ''}">
             `;
-            optionsContainer.appendChild(optionDiv);
-        });
+            optionsContainer.appendChild(inputDiv);
+        } else if (question.type === 'judge') {
+            // 判断题：显示正确/错误两个选项
+            const judgeOptions = ['正确', '错误'];
+            judgeOptions.forEach((option, idx) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'option';
+                optionDiv.innerHTML = `
+                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="currentExamAnswers[${currentQuestionIndex}] = this.value;">
+                    <label for="opt${idx}">${option}</label>
+                `;
+                optionsContainer.appendChild(optionDiv);
+            });
+        } else if (question.type === 'multi') {
+            // 多选题：显示复选框
+            const optionsList = (question.options || '').split('|').filter(o => o.trim());
+            optionsList.forEach((option, idx) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'option';
+                optionDiv.innerHTML = `
+                    <input type="checkbox" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="updateMultiAnswer(${currentQuestionIndex})">
+                    <label for="opt${idx}">${option}</label>
+                `;
+                optionsContainer.appendChild(optionDiv);
+            });
+            // 添加多选答案容器
+            if (!window.multiAnswers) window.multiAnswers = {};
+            window.multiAnswers[currentQuestionIndex] = [];
+        } else {
+            // 单选题：显示单选按钮
+            const optionsList = (question.options || '').split('|').filter(o => o.trim());
+            optionsList.forEach((option, idx) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'option';
+                optionDiv.innerHTML = `
+                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="currentExamAnswers[${currentQuestionIndex}] = this.value;">
+                    <label for="opt${idx}">${option}</label>
+                `;
+                optionsContainer.appendChild(optionDiv);
+            });
+        }
         
         if (currentExamAnswers[currentQuestionIndex]) {
             const options = document.querySelectorAll(`input[name="question${currentQuestionIndex}"]`);
@@ -1996,8 +2289,63 @@
         updateExamProgress();
     }
     
+    // 更新答题卡导航
+    function updateExamNavGrid() {
+        const grid = document.getElementById('examNavGrid');
+        if (!grid || !currentExam || !currentExam.questions) return;
+        
+        let html = '';
+        for (let i = 0; i < currentExam.questions.length; i++) {
+            const isAnswered = currentExamAnswers[i] !== undefined;
+            const isCurrent = i === currentQuestionIndex;
+            const bgColor = isAnswered ? '#667eea' : '#e0e0e0';
+            const textColor = isAnswered ? '#fff' : '#666';
+            const border = isCurrent ? '3px solid #ff6b6b' : 'none';
+            
+            html += `
+                <div onclick="showExamQuestion(${i})" 
+                     style="width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
+                            background: ${bgColor}; color: ${textColor}; border-radius: 6px; cursor: pointer; 
+                            font-size: 14px; font-weight: bold; border: ${border};
+                            transition: all 0.2s;">
+                    ${i + 1}
+                </div>
+            `;
+        }
+        grid.innerHTML = html;
+        
+        // 更新已答数量
+        const answeredCount = Object.keys(currentExamAnswers).length;
+        document.getElementById('answeredCount').textContent = `(${answeredCount}/${currentExam.questions.length})`;
+    }
+    
+    // 上一题
+    function prevExamQuestion() {
+        if (currentQuestionIndex > 0) {
+            currentQuestionIndex--;
+            showExamQuestion();
+        }
+    }
+    
+    // 下一题
     function nextExamQuestion() {
-        showExamQuestion();
+        if (currentQuestionIndex < currentExam.questions.length - 1) {
+            currentQuestionIndex++;
+            showExamQuestion();
+        }
+    }
+    
+    // 多选题答案处理
+    function updateMultiAnswer(questionIndex) {
+        const checkboxes = document.querySelectorAll(`input[name="question${questionIndex}"]:checked`);
+        const selected = Array.from(checkboxes).map(cb => cb.value);
+        if (selected.length > 0) {
+            currentExamAnswers[questionIndex] = selected.join('|');
+        } else {
+            delete currentExamAnswers[questionIndex];
+        }
+        updateExamProgress();
+        updateExamNavGrid();
     }
     
     function updateExamProgress() {
@@ -2021,18 +2369,22 @@
         
         const finalScore = Math.round(score * 10) / 10;
         
-        const existingScore = database.scores.find(s => s.studentId === currentExamStudent.id && s.examId === currentExam.id);
-        if (existingScore) {
-            existingScore.score = finalScore;
-            existingScore.date = new Date().toLocaleDateString();
-        } else {
-            database.scores.push({
-                studentId: currentExamStudent.id,
-                examId: currentExam.id,
-                score: finalScore,
-                date: new Date().toLocaleDateString()
-            });
-        }
+        // 【修改】允许保存多次考试成绩（补考记录）
+        // 每次考试都新增一条记录，而不是覆盖
+        database.scores.push({
+            id: 'SC' + String(database.scores.length + 1).padStart(5, '0'),
+            studentId: currentExamStudent.id,
+            studentName: currentExamStudent.name,
+            examId: currentExam.id,
+            examName: currentExam.name,
+            score: finalScore,
+            date: new Date().toLocaleDateString(),
+            timestamp: Date.now()
+        });
+        
+        // 【关键】清空已生成的题目，下次补考时重新随机抽取
+        currentExam.questions = [];
+        currentExam.questionCount = 0;
         
         saveData();
         
@@ -2187,6 +2539,9 @@
     function openAddStudentModal() {
         editingStudentId = null;
         document.getElementById('addStudentModal').querySelector('.modal-header').textContent = '添加学员';
+        document.getElementById('studentIdInput').value = '';
+        document.getElementById('studentIdInput').disabled = false;
+        document.getElementById('studentIdInput').placeholder = '例如：S001';
         document.getElementById('studentName_add').value = '';
         document.getElementById('studentPhone').value = '';
         document.getElementById('studentCourse').value = '选择课程...';
@@ -2198,6 +2553,9 @@
         if (!student) return;
         editingStudentId = id;
         document.getElementById('addStudentModal').querySelector('.modal-header').textContent = '编辑学员';
+        document.getElementById('studentIdInput').value = student.id;
+        document.getElementById('studentIdInput').disabled = false;
+        document.getElementById('studentIdInput').placeholder = '学员ID';
         document.getElementById('studentName_add').value = student.name;
         document.getElementById('studentPhone').value = student.phone;
         document.getElementById('studentCourse').value = student.course;
@@ -2205,26 +2563,44 @@
     }
     
     function saveStudent() {
+        const id = document.getElementById('studentIdInput').value.trim();
         const name = document.getElementById('studentName_add').value;
         const phone = document.getElementById('studentPhone').value;
         const course = document.getElementById('studentCourse').value;
         
+        if (!id) {
+            showToast('请输入学员ID', 'error');
+            return;
+        }
         if (!name || !phone || course === '选择课程...') {
             showToast('请填写完整信息', 'error');
             return;
         }
         
+        // 检查ID重复
+        const existingStudent = database.students.find(s => s.id === id);
         if (editingStudentId) {
+            // 编辑模式：检查是否有其他学员使用此ID
+            if (existingStudent && existingStudent.id !== editingStudentId) {
+                showToast('学员ID已存在，请使用其他ID', 'error');
+                return;
+            }
             const student = database.students.find(s => s.id === editingStudentId);
             if (student) {
+                student.id = id;  // 允许修改ID
                 student.name = name;
                 student.phone = phone;
                 student.course = course;
             }
             showToast('学员更新成功', 'success');
         } else {
+            // 添加模式：检查ID是否已存在
+            if (existingStudent) {
+                showToast('学员ID已存在，请使用其他ID', 'error');
+                return;
+            }
             database.students.push({
-                id: 'S' + String(database.students.length + 1).padStart(3, '0'),
+                id: id,
                 name: name, phone: phone, course: course, status: 'active'
             });
             showToast('学员添加成功', 'success');
@@ -2790,19 +3166,40 @@
     function renderQuestions() {
         refreshLevelSelects();
         const tbody = document.getElementById('questionsList');
-        tbody.innerHTML = database.questions.map(q => `
+        tbody.innerHTML = database.questions.map(q => {
+            // 格式化答案显示
+            let answerDisplay = '';
+            if (q.type === 'judge') {
+                // 判断题：显示 ✓ 或 ✗
+                answerDisplay = q.answer === '正确' ? '<span style="color:#48bb78;font-weight:bold;">✓ 正确</span>' : '<span style="color:#e53e3e;font-weight:bold;">✗ 错误</span>';
+            } else if (q.type === 'fill') {
+                // 填空题：显示答案文本
+                answerDisplay = `<span style="color:#667eea;">${q.answer || '-'}</span>`;
+            } else {
+                // 单选/多选：显示字母
+                const options = (q.options || '').split('|');
+                const answers = (q.answer || '').split('|');
+                const letters = answers.map(ans => {
+                    const idx = options.findIndex(o => o.trim() === ans.trim());
+                    return idx >= 0 ? String.fromCharCode(65 + idx) : '';
+                }).filter(l => l);
+                answerDisplay = `<span style="color:#667eea;font-weight:bold;">${letters.join('') || '-'}</span>`;
+            }
+
+            return `
             <tr>
                 <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
                 <td>${q.content.substring(0, 50)}${q.content.length > 50 ? '...' : ''}</td>
                 <td><span style="background:#667eea;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">${q.level || '未分级'}</span></td>
                 <td>${getTypeName(q.type)}</td>
                 <td>${getDifficultyName(q.difficulty)}</td>
+                <td>${answerDisplay}</td>
                 <td>
                     <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteQuestion('${q.id}')">删除</button>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
         updateBatchDeleteBtn();
     }
     
@@ -2818,19 +3215,40 @@
             (!diffFilter || q.difficulty === diffFilter)
         );
         const tbody = document.getElementById('questionsList');
-        tbody.innerHTML = filtered.map(q => `
+        tbody.innerHTML = filtered.map(q => {
+            // 格式化答案显示
+            let answerDisplay = '';
+            if (q.type === 'judge') {
+                // 判断题：显示 ✓ 或 ✗
+                answerDisplay = q.answer === '正确' ? '<span style="color:#48bb78;font-weight:bold;">✓ 正确</span>' : '<span style="color:#e53e3e;font-weight:bold;">✗ 错误</span>';
+            } else if (q.type === 'fill') {
+                // 填空题：显示答案文本
+                answerDisplay = `<span style="color:#667eea;">${q.answer || '-'}</span>`;
+            } else {
+                // 单选/多选：显示字母
+                const options = (q.options || '').split('|');
+                const answers = (q.answer || '').split('|');
+                const letters = answers.map(ans => {
+                    const idx = options.findIndex(o => o.trim() === ans.trim());
+                    return idx >= 0 ? String.fromCharCode(65 + idx) : '';
+                }).filter(l => l);
+                answerDisplay = `<span style="color:#667eea;font-weight:bold;">${letters.join('') || '-'}</span>`;
+            }
+
+            return `
             <tr>
                 <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
                 <td>${q.content.substring(0, 50)}${q.content.length > 50 ? '...' : ''}</td>
                 <td><span style="background:#667eea;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">${q.level || '未分级'}</span></td>
                 <td>${getTypeName(q.type)}</td>
                 <td>${getDifficultyName(q.difficulty)}</td>
+                <td>${answerDisplay}</td>
                 <td>
                     <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteQuestion('${q.id}')">删除</button>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
         updateBatchDeleteBtn();
     }
     
@@ -2875,8 +3293,14 @@
     }
     
     function getTypeName(type) {
-        const types = { 'single': '单选', 'multi': '多选', 'judge': '判断', 'fill': '填空' };
+        const types = { 'single': '单选题', 'multi': '多选题', 'judge': '判断题', 'fill': '填空题' };
         return types[type] || type;
+    }
+    
+    // 获取题型图标
+    function getTypeIcon(type) {
+        const icons = { 'single': '◉', 'multi': '☑', 'judge': '✓✗', 'fill': '✎' };
+        return icons[type] || '●';
     }
     
     function getDifficultyName(difficulty) {
@@ -3034,11 +3458,41 @@
     }
     
     function exportQuestions() {
-        let csv = '题目ID,题目内容,级别,题型,难度,选项,答案\n';
-        database.questions.forEach(q => {
-            csv += `${q.id},"${(q.content||'').replace(/"/g, '""')}","${q.level||'初级'}",${q.type},${q.difficulty},"${(q.options||'').replace(/"/g, '""')}","${(q.answer||'').replace(/"/g, '""')}"\n`;
+        // 新格式：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案
+        let csv = '序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案\n';
+        database.questions.forEach((q, idx) => {
+            let options = (q.options || '').split('|');
+            
+            // 判断题特殊处理
+            if (q.type === 'judge') {
+                const answerLetter = (q.answer === '正确' || q.answer === 'A') ? 'A' : 'B';
+                csv += `${idx + 1},"${(q.content||'').replace(/"/g, '""')}",judge,${q.level||'初级'},✓,✗,,,${answerLetter}\n`;
+                return;
+            }
+            
+            const optA = (options[0] || '').replace(/"/g, '""');
+            const optB = (options[1] || '').replace(/"/g, '""');
+            const optC = (options[2] || '').replace(/"/g, '""');
+            const optD = (options[3] || '').replace(/"/g, '""');
+            
+            // 转换答案格式：选项内容 -> 字母
+            let answerLetters = '';
+            const answers = (q.answer || '').split('|');
+            answers.forEach(ans => {
+                const ansTrim = ans.trim();
+                const optIdx = options.findIndex(o => o.trim() === ansTrim);
+                if (optIdx >= 0) {
+                    answerLetters += (answerLetters ? '' : '') + String.fromCharCode(65 + optIdx); // A=65
+                } else if (/^[A-Da-d]$/.test(ansTrim)) {
+                    // 已经是字母格式
+                    answerLetters += (answerLetters ? '' : '') + ansTrim.toUpperCase();
+                }
+            });
+            
+            csv += `${idx + 1},"${(q.content||'').replace(/"/g, '""')}",${q.type},${q.level||'初级'},"${optA}","${optB}","${optC}","${optD}",${answerLetters}\n`;
         });
         downloadCSV(csv, '题库.csv');
+        showToast('✅ 题库导出成功（表格格式）', 'success');
     }
     
     function importQuestions() {
@@ -3114,7 +3568,7 @@
                     }
                 });
             } else {
-                // CSV格式导入 - 支持多种编码和格式
+                // CSV格式导入 - 支持新格式（分列选项）和旧格式（选项合并）
                 let lines = content.split(/\r?\n/);
                 
                 // 跳过空行和BOM
@@ -3132,76 +3586,149 @@
                     try {
                         const fields = parseCSVLine(line);
                         
-                        // 兼容新旧格式：新格式7列(ID,内容,级别,题型,难度,选项,答案)，旧格式6列(ID,内容,题型,难度,选项,答案)
-                        let id, qContent, qLevel, qType, qDifficulty, qOptions, qAnswer;
+                        let id, qContent, qLevel, qType, qOptions, qAnswer;
                         
-                        if (fields.length >= 7) {
-                            // 新格式（含级别）
+                        // 智能识别格式
+                        if (fields.length >= 9) {
+                            // 新格式（分列选项）：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案
+                            id = 'Q' + String(database.questions.length + 1).padStart(3, '0');
+                            qContent = fields[1] ? fields[1].trim() : '';
+                            qType = fields[2] ? fields[2].trim() : 'single';
+                            qLevel = fields[3] ? fields[3].trim() : database.levels[0] || '初级';
+                            
+                            console.log(`[导入] 第${i+1}行: 题型=${qType}, 内容=${qContent.substring(0,20)}...`);
+                            
+                            // 组合选项（跳过空选项）
+                            const opts = [];
+                            if (fields[4] && fields[4].trim()) opts.push(fields[4].trim());
+                            if (fields[5] && fields[5].trim()) opts.push(fields[5].trim());
+                            if (fields[6] && fields[6].trim()) opts.push(fields[6].trim());
+                            if (fields[7] && fields[7].trim()) opts.push(fields[7].trim());
+                            
+                            // 判断题特殊处理：如果没有选项，自动生成"正确|错误"
+                            if (qType === 'judge' && opts.length === 0) {
+                                opts.push('正确', '错误');
+                            }
+                            
+                            // 判断题：如果选项是 ✓/✗，转换为"正确|错误"
+                            if (qType === 'judge' && opts.length === 2) {
+                                if (opts[0] === '✓' || opts[0] === '√' || opts[0] === '是') {
+                                    opts = ['正确', '错误'];
+                                }
+                            }
+                            
+                            qOptions = opts.join('|');
+                            
+                            // 转换答案：字母 -> 选项内容
+                            const answerField = fields[8] ? fields[8].trim() : '';
+                            
+                            // 判断题特殊处理：直接将A转为"正确"，B转为"错误"
+                            if (qType === 'judge') {
+                                if (answerField === 'A' || answerField === 'a') {
+                                    qAnswer = '正确';
+                                } else if (answerField === 'B' || answerField === 'b') {
+                                    qAnswer = '错误';
+                                } else {
+                                    qAnswer = '正确'; // 默认答案
+                                }
+                            } else {
+                                // 其他题型：字母转选项内容
+                                const answerLetters = answerField.split('').map(a => a.trim().toUpperCase());
+                                const answerContents = answerLetters.map(letter => {
+                                    const idx = letter.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+                                    return idx >= 0 && idx < opts.length ? opts[idx] : '';
+                                }).filter(a => a);
+                                qAnswer = answerContents.join('|');
+                            }
+                            
+                        } else if (fields.length >= 7) {
+                            // 旧格式（含级别）：ID,内容,级别,题型,难度,选项,答案
                             id = fields[0] ? fields[0].trim() : null;
                             qContent = fields[1] ? fields[1].trim() : '';
                             qLevel = fields[2] ? fields[2].trim() : database.levels[0];
                             qType = fields[3] ? fields[3].trim() : 'single';
-                            qDifficulty = fields[4] ? fields[4].trim() : 'easy';
                             qOptions = fields[5] ? fields[5].trim() : '';
-                            qAnswer = fields[6] ? fields[6].trim() : (qOptions.split('|').slice(-1)[0] || '');
+                            qAnswer = fields[6] ? fields[6].trim() : '';
                         } else if (fields.length >= 6) {
-                            // 旧格式（无级别）
+                            // 旧格式（无级别）：ID,内容,题型,难度,选项,答案
                             id = fields[0] ? fields[0].trim() : null;
                             qContent = fields[1] ? fields[1].trim() : '';
                             qLevel = database.levels[0] || '初级';
                             qType = fields[2] ? fields[2].trim() : 'single';
-                            qDifficulty = fields[3] ? fields[3].trim() : 'easy';
                             qOptions = fields[4] ? fields[4].trim() : '';
-                            qAnswer = fields[5] ? fields[5].trim() : (qOptions.split('|').slice(-1)[0] || '');
+                            qAnswer = fields[5] ? fields[5].trim() : '';
                         } else {
                             errors.push(`第${i+1}行：字段数不足（需要至少6个字段，实际${fields.length}个）`);
                             continue;
                         }
                         
-                        // 确保级别有效，否则使用默认级别
+                        // 确保级别有效
                         if (!qLevel || !database.levels.includes(qLevel)) {
                             qLevel = database.levels[0] || '初级';
                         }
                         
-                        // 确保级别存在于级别列表中
-                        if (!database.levels.includes(qLevel) && fields.length >= 7 && fields[2]) {
-                            database.levels.push(fields[2].trim());
+                        // 如果导入的级别不在列表中，添加它
+                        if (fields.length >= 9 && fields[3] && !database.levels.includes(fields[3].trim())) {
+                            database.levels.push(fields[3].trim());
                             refreshLevelSelects();
                         }
                         
-                        // 验证必要字段
-                        if (!qContent || !qOptions) {
-                            errors.push(`第${i+1}行：题目内容或选项为空`);
+                        // 判断题和填空题特殊处理：选项可以为空
+                        if (!qContent) {
+                            errors.push(`第${i+1}行：题目内容为空`);
+                            continue;
+                        }
+                        
+                        // 【修复】先处理判断题选项，再验证
+                        // 判断题：如果选项为空，自动生成"正确|错误"
+                        if (qType === 'judge') {
+                            if (!qOptions || qOptions.trim() === '') {
+                                qOptions = '正确|错误';
+                            }
+                            // 如果选项只有"正确"或"错误"一个，补全为"正确|错误"
+                            const judgeOpts = qOptions.split('|').map(o => o.trim()).filter(o => o);
+                            if (judgeOpts.length === 1) {
+                                qOptions = '正确|错误';
+                            }
+                            if (!qAnswer) {
+                                qAnswer = '正确'; // 默认答案为"正确"
+                            }
+                        }
+                        
+                        // 填空题不需要选项
+                        if (qType !== 'fill' && qType !== 'judge' && !qOptions) {
+                            errors.push(`第${i+1}行：选项为空`);
                             continue;
                         }
                         
                         const optionsArray = qOptions.split('|').map(o => o.trim()).filter(o => o);
-                        if (optionsArray.length < 2) {
+                        if (optionsArray.length < 2 && qType !== 'judge' && qType !== 'fill') {
                             errors.push(`第${i+1}行：选项数少于2个`);
                             continue;
                         }
                         
-                        // 验证题型和难度
+                        // 验证题型
                         if (!['single', 'multi', 'judge', 'fill'].includes(qType)) {
-                            errors.push(`第${i+1}行：题型"${qType}"无效`);
-                            continue;
-                        }
-                        if (!['easy', 'medium', 'hard'].includes(qDifficulty)) {
-                            errors.push(`第${i+1}行：难度"${qDifficulty}"无效`);
+                            errors.push(`第${i+1}行：题型"${qType}"无效（应为 single/multi/judge/fill）`);
                             continue;
                         }
                         
                         // 生成ID
                         const newId = id || 'Q' + String(database.questions.length + 1).padStart(3, '0');
                         
+                        // 如果没有答案，使用最后一个选项
+                        if (!qAnswer && optionsArray.length > 0) {
+                            qAnswer = optionsArray[optionsArray.length - 1];
+                        }
+                        
                         database.questions.push({
                             id: newId,
                             content: qContent,
                             type: qType,
-                            difficulty: qDifficulty,
+                            difficulty: 'medium', // 默认难度
                             level: qLevel,
                             options: qOptions,
-                            answer: qAnswer || optionsArray[optionsArray.length - 1]
+                            answer: qAnswer
                         });
                         importCount++;
                     } catch (lineErr) {
@@ -3264,7 +3791,7 @@
         // 最后一个字段
         result.push(current.trim().replace(/^"|"$/g, ''));
         
-        // 清理结果 - 移除空字段和过滤乱码
+        // 清理结果 - 移除前后引号和BOM，但保留空字段（判断题需要）
         return result.map(field => {
             // 移除前后引号
             let clean = field.replace(/^["']|["']$/g, '');
@@ -3273,7 +3800,7 @@
                 clean = clean.slice(1);
             }
             return clean;
-        }).filter(field => field !== '');  // 过滤空字段
+        });  // 不过滤空字段，保留原始字段数
     }
     
     // 考试管理
@@ -3292,12 +3819,20 @@
             } else {
                 typeDesc = e.questionCount + '题(旧版)';
             }
-            
+
+            // 考试类型标签
+            const typeLabels = {
+                'formal': '<span style="background:#4299e1;color:white;padding:2px 8px;border-radius:4px;font-size:12px;">正式考试</span>',
+                'mock': '<span style="background:#9f7aea;color:white;padding:2px 8px;border-radius:4px;font-size:12px;">模拟考试</span>',
+                'practice': '<span style="background:#48bb78;color:white;padding:2px 8px;border-radius:4px;font-size:12px;">日常练习</span>'
+            };
+            const typeLabel = typeLabels[e.type || 'formal'] || typeLabels['formal'];
+
             return `<tr>
-                <td>${e.name}</td>
+                <td>${e.name} ${typeLabel}</td>
                 <td>${typeDesc}</td>
                 <td>${(e.levels || []).length > 0 ? (e.levels || []).join('、') : '全部'}</td>
-                <td>${e.timeLimit}分钟</td>
+                <td>${e.timeLimit === 0 ? '无限制' : e.timeLimit + '分钟'}</td>
                 <td>${e.participants || 0}</td>
                 <td><span style="color: #48bb78;">${e.status === 'active' ? '活跃' : '已结束'}</span></td>
                 <td>
@@ -3314,8 +3849,11 @@
         editingExamId = null;
         document.getElementById('addExamModal').querySelector('.modal-header').textContent = '创建考试';
         document.getElementById('examName').value = '';
+        document.getElementById('examType').value = 'formal';  // 默认正式考试
         document.getElementById('examTime').value = '60';
         document.getElementById('examPassScore').value = '60';
+        document.getElementById('examMaxAttempts').value = '1';
+        toggleExamTypeFields();  // 更新字段显示状态
         refreshExamLevelChecks();
         buildExamTypeCountUI();
         updateExamAvailableCount();
@@ -3328,8 +3866,11 @@
         editingExamId = id;
         document.getElementById('addExamModal').querySelector('.modal-header').textContent = '编辑考试';
         document.getElementById('examName').value = exam.name;
+        document.getElementById('examType').value = exam.type || 'formal';  // 回填考试类型
         document.getElementById('examTime').value = exam.timeLimit;
         document.getElementById('examPassScore').value = exam.passScore || 60;
+        document.getElementById('examMaxAttempts').value = exam.maxAttempts || 1;
+        toggleExamTypeFields();  // 更新字段显示状态
         refreshExamLevelChecks();
         // 勾选当前级别
         const levels = exam.levels || [];
@@ -3354,42 +3895,82 @@
         updateExamTypeSummary();
         document.getElementById('addExamModal').classList.add('active');
     }
-    
+
+    // 根据考试类型切换字段显示
+    function toggleExamTypeFields() {
+        const type = document.getElementById('examType').value;
+        const hintEl = document.getElementById('examTypeHint');
+        const maxAttemptsGroup = document.getElementById('examMaxAttempts').parentElement;
+        const passScoreGroup = document.getElementById('examPassScore').parentElement;
+        const timeInput = document.getElementById('examTime');
+
+        // 更新提示文本
+        const hints = {
+            'formal': '正式考试：成绩计入档案，限考试次数',
+            'mock': '模拟考试：成绩不计入档案，不限次数，考后显示答案',
+            'practice': '日常练习：无时间限制，即时反馈，错题自动收集'
+        };
+        hintEl.textContent = hints[type] || '';
+
+        // 根据类型显示/隐藏字段
+        if (type === 'formal') {
+            // 正式考试：显示所有字段
+            maxAttemptsGroup.style.display = 'block';
+            passScoreGroup.style.display = 'block';
+            timeInput.disabled = false;
+        } else if (type === 'mock') {
+            // 模拟考试：隐藏考试次数限制，保留时间限制
+            maxAttemptsGroup.style.display = 'none';
+            passScoreGroup.style.display = 'block';
+            timeInput.disabled = false;
+        } else if (type === 'practice') {
+            // 日常练习：隐藏考试次数和及格分，禁用时间限制
+            maxAttemptsGroup.style.display = 'none';
+            passScoreGroup.style.display = 'none';
+            timeInput.value = '0';  // 无时间限制
+            timeInput.disabled = true;
+        }
+    }
+
     function saveExam() {
         const name = document.getElementById('examName').value;
+        const type = document.getElementById('examType').value;  // 获取考试类型
         const time = document.getElementById('examTime').value;
         const score = document.getElementById('examPassScore').value;
+        const maxAttempts = document.getElementById('examMaxAttempts').value;
         const typeCounts = getExamTypeCounts();
-        
+
         // 获取选中的级别
         const selectedLevels = getSelectedExamLevels();
-        
+
         // 计算总题数
         const totalCount = Object.values(typeCounts).reduce((a, b) => a + b, 0);
-        
+
         if (!name || !time || !score) {
             showToast('请填写完整信息', 'error');
             return;
         }
-        
+
         if (selectedLevels.length === 0) {
             showToast('请至少选择一个题目级别', 'error');
             return;
         }
-        
+
         if (totalCount === 0) {
             showToast('请至少设置一种题型的数量', 'error');
             return;
         }
-        
+
         if (editingExamId) {
             // 编辑模式：更新已有考试
             const exam = database.exams.find(e => e.id === editingExamId);
             if (exam) {
                 exam.name = name;
+                exam.type = type;  // 保存考试类型
                 exam.questionCount = totalCount;
                 exam.timeLimit = parseInt(time);
                 exam.passScore = parseInt(score);
+                exam.maxAttempts = type === 'formal' ? parseInt(maxAttempts) : 999;  // 模拟考试和练习不限次数
                 exam.levels = selectedLevels;
                 exam.typeCounts = typeCounts;
                 // 配置变更，清空已生成的题目以便下次重新生成
@@ -3401,14 +3982,17 @@
             database.exams.push({
                 id: 'E' + String(database.exams.length + 1).padStart(3, '0'),
                 name: name,
+                type: type,  // 保存考试类型
                 questionCount: totalCount,
                 timeLimit: parseInt(time),
                 participants: 0,
                 status: 'active',
                 passScore: parseInt(score),
+                maxAttempts: type === 'formal' ? parseInt(maxAttempts) : 999,  // 模拟考试和练习不限次数
                 levels: selectedLevels,
                 typeCounts: typeCounts,
-                questions: []
+                questions: [],
+                showAnswer: type !== 'formal'  // 模拟考试和练习考后显示答案
             });
             showToast('考试创建成功', 'success');
         }
@@ -4277,6 +4861,16 @@
             el2.textContent = size > 1024 ? (size / 1024).toFixed(1) + ' KB' : size + ' B';
         }
         
+        // 显示数据模式
+        const dataModeEl = document.getElementById('infoDataMode');
+        if (dataModeEl) {
+            if (isCloudReady) {
+                dataModeEl.innerHTML = '<span style="color:#38a169;">☁️ 云端同步</span>';
+            } else {
+                dataModeEl.innerHTML = '<span style="color:#e53e3e;">💾 本地存储</span>';
+            }
+        }
+        
         document.getElementById('infoStudentCount').textContent = database.students.length;
         document.getElementById('infoCourseCount').textContent = database.courses.length;
         document.getElementById('infoExamCount').textContent = database.exams.length;
@@ -4434,12 +5028,23 @@
     // 初始化云开发
     async function initCloudBase() {
         try {
+            console.log('开始初始化云开发...');
+            
+            // 检查 cloudbase SDK 是否加载
+            if (typeof cloudbase === 'undefined') {
+                throw new Error('CloudBase SDK 未加载');
+            }
+            console.log('✅ CloudBase SDK 已加载');
+            
             // 初始化 CloudBase
             cloudApp = cloudbase.init(CLOUDBASE_CONFIG);
+            console.log('✅ CloudBase 初始化成功');
             
             // 匿名登录（控制台已开启）
             const auth = cloudApp.auth();
+            console.log('开始匿名登录...');
             await auth.anonymousAuthProvider().signIn();
+            console.log('✅ 匿名登录成功');
             
             cloudDb = cloudApp.database();
             isCloudReady = true;
@@ -4450,7 +5055,15 @@
             return true;
         } catch (e) {
             console.error('❌ 云开发初始化失败:', e);
-            console.log('⚠️ 降级到本地存储模式');
+            console.error('错误详情:', e.message || e);
+            
+            // 在页面上显示错误（调试用）
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#e53e3e;color:white;padding:15px 25px;border-radius:8px;z-index:9999;font-size:14px;';
+            errorDiv.innerHTML = '⚠️ 云开发初始化失败: ' + (e.message || e) + '<br>已降级到本地存储模式';
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 8000);
+            
             // 降级到本地存储
             isCloudReady = false;
             await loadData();

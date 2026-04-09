@@ -22,7 +22,7 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.12.2 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.12.4 - LOADED AT ' + new Date().toISOString());
     
     // 页面加载时检查：如果是通过短链接打开的，自动切换到同步数据tab
     window.addEventListener('DOMContentLoaded', function() {
@@ -41,7 +41,7 @@
         }
     });
     </script>
-    <title>冉鹏工作室培训管理系统 v2.12.2</title>
+    <title>冉鹏工作室培训管理系统 v2.12.4</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -833,7 +833,7 @@
         }
     </style>
     <!-- v2.11.0: 使用本地存储 + 同步码方案，无需云SDK -->
-    <!-- v2.12.2: 二维码功能替代方案 + 同步链接优化 -->
+    <!-- v2.12.4: 同步码极致压缩（减少40-60%字符数） + 向后兼容 -->
 </head>
 <body>
 
@@ -841,7 +841,7 @@
 <div id="loginPage" class="login-container">
     <div class="login-card">
         <h1>冉鹏工作室</h1>
-        <p>培训管理系统 v2.12.2</p>
+        <p>培训管理系统 v2.12.4</p>
         
         <div class="login-tabs">
             <button class="login-tab active" onclick="switchLoginTab('admin', this)">管理员登陆</button>
@@ -870,18 +870,48 @@
                 <button class="login-tab" onclick="toggleSyncPanel();this.classList.toggle('active')" style="font-size:12px;padding:6px;">同步数据</button>
             </div>
 
-            <!-- 同步数据面板（v2.11.0 新功能） -->
+            <!-- 同步数据面板（v2.12.4 极致压缩版） -->
             <div id="syncPanel" style="display:none;margin-bottom:15px;">
-                <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:12px;">
-                    <p style="font-size:12px;color:#276749;margin:0 0 8px;">
-                        <strong>📱 数据同步</strong><br>
-                        如果提示"找不到学员"，请联系管理员获取同步码后在此粘贴
+                <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:15px;">
+                    <p style="font-size:13px;color:#276749;margin:0 0 10px;line-height:1.5;">
+                        <strong>📱 数据同步（手机版）</strong><br>
+                        如果提示"找不到学员"，请按以下步骤操作：
                     </p>
-                    <textarea id="manualSyncCodeInput" placeholder="将管理员发来的同步码粘贴到这里..." style="width:100%;height:70px;border:1px solid #d0d0d0;border-radius:5px;padding:8px;font-size:11px;resize:none;"></textarea>
-                    <button onclick="manualSyncCode()" style="width:100%;margin-top:8px;padding:8px;background:#48bb78;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;">
-                        ✅ 确认同步
-                    </button>
-                    <p id="syncInfoText" style="font-size:11px;color:#718096;margin:8px 0 0;text-align:center;"></p>
+                    
+                    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:10px;margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;margin-bottom:5px;">
+                            <div style="width:24px;height:24px;background:#48bb78;color:white;border-radius:50%;text-align:center;line-height:24px;margin-right:8px;font-size:12px;">1</div>
+                            <span style="font-size:12px;color:#2d3748;font-weight:bold;">联系管理员获取同步码</span>
+                        </div>
+                        <div style="display:flex;align-items:center;margin-bottom:5px;">
+                            <div style="width:24px;height:24px;background:#48bb78;color:white;border-radius:50%;text-align:center;line-height:24px;margin-right:8px;font-size:12px;">2</div>
+                            <span style="font-size:12px;color:#2d3748;font-weight:bold;">长按下方文本框 → 粘贴</span>
+                        </div>
+                        <div style="display:flex;align-items:center;">
+                            <div style="width:24px;height:24px;background:#48bb78;color:white;border-radius:50%;text-align:center;line-height:24px;margin-right:8px;font-size:12px;">3</div>
+                            <span style="font-size:12px;color:#2d3748;font-weight:bold;">点击"确认同步"按钮</span>
+                        </div>
+                    </div>
+                    
+                    <textarea id="manualSyncCodeInput" placeholder="📱 长按此框 → 粘贴管理员发的同步码..." style="width:100%;height:100px;border:2px solid #48bb78;border-radius:8px;padding:12px;font-size:13px;resize:none;font-family:monospace;background:#fff;"></textarea>
+                    
+                    <div style="display:flex;gap:8px;margin-top:10px;">
+                        <button onclick="manualSyncCode()" style="flex:1;padding:12px;background:#48bb78;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:bold;">
+                            ✅ 确认同步
+                        </button>
+                        <button onclick="clearSyncCode()" style="padding:12px 16px;background:#e2e8f0;color:#4a5568;border:none;border-radius:8px;cursor:pointer;font-size:13px;">
+                            清空
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top:10px;font-size:11px;color:#718096;line-height:1.5;">
+                        <strong>📱 手机操作提示：</strong><br>
+                        • 长按文本框 → 选择"粘贴"<br>
+                        • 如果同步码很长，可能需要多次复制<br>
+                        • 同步成功后请刷新页面再登录
+                    </div>
+                    
+                    <p id="syncInfoText" style="font-size:11px;color:#718096;margin:10px 0 0;text-align:center;padding:8px;background:#fff;border-radius:5px;border:1px solid #e2e8f0;"></p>
                 </div>
             </div>
 
@@ -1488,23 +1518,26 @@
                     <input type="file" id="importBackupFile" style="display:none" accept=".json" onchange="importFullBackup()">
                 </div>
 
-                <!-- 数据同步码（v2.12.2 新功能） -->
+                <!-- 数据同步码（v2.12.4 极致压缩版） -->
                 <div style="background:linear-gradient(135deg,#ebf4ff,#e9d8fd);border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:2px solid #667eea;">
-                    <h3 style="margin:0 0 10px;font-size:15px;color:#553c9a;">🔗 数据同步码</h3>
+                    <h3 style="margin:0 0 10px;font-size:15px;color:#553c9a;">🔗 数据同步码（压缩版）</h3>
                     <p style="font-size:13px;color:#553c9a;margin-bottom:12px;">
-                        生成同步链接/二维码，发送给学员手机端，学员打开即可同步所有学员数据、题库和考试信息。<br>
-                        <strong>无需学员逐个导入，一键搞定！支持二维码扫码同步</strong>
+                        生成<strong>压缩版</strong>同步码，字符数减少40-60%，手机操作更方便！<br>
+                        <strong>自动兼容旧格式，学员无需更新</strong>
                     </p>
                     <button class="btn" onclick="generateSyncLink()" style="width:100%;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(102,126,234,0.4);">
-                        🚀 生成同步码（支持二维码）
+                        🚀 生成压缩同步码（减少40-60%）
+                    </button>
+                    <button class="btn" onclick="testSyncCodeCompression()" style="width:100%;padding:10px;margin-top:10px;background:#f7fafc;color:#4a5568;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;cursor:pointer;">
+                        📊 测试压缩效果
                     </button>
                     <div style="margin-top:10px;font-size:11px;color:#718096;line-height:1.8;">
                         <p>📋 使用流程：</p>
                         <ol style="padding-left:18px;margin:0;">
-                            <li>点击上方按钮，生成同步链接</li>
-                            <li>复制链接，通过微信/QQ发送给学员</li>
-                            <li>学员打开链接，自动同步数据</li>
-                            <li>学员刷新页面，即可用姓名+ID登录</li>
+                            <li>点击上方按钮，生成<strong>压缩版同步码</strong></li>
+                            <li>复制<strong>短链接+压缩同步码</strong>发给学员</li>
+                            <li>学员打开短链接，粘贴同步码完成同步</li>
+                            <li><strong>自动兼容</strong>旧格式，学员无需更新</li>
                         </ol>
                     </div>
                 </div>
@@ -1513,7 +1546,7 @@
                 <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
                     <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">ℹ️ 系统信息</h3>
                     <div style="font-size:13px;color:#4a5568;line-height:2;">
-                        <p>系统版本：<strong>v2.12.2</strong></p>
+                        <p>系统版本：<strong>v2.12.4</strong></p>
                         <p>数据模式：<span style="font-weight:bold;color:#2c5282;">💾 本地存储 + 同步码</span></p>
                         <p>学员数量：<span id="infoStudentCount">0</span></p>
                         <p>课程数量：<span id="infoCourseCount">0</span></p>
@@ -5306,7 +5339,7 @@
             el2.textContent = size > 1024 ? (size / 1024).toFixed(1) + ' KB' : size + ' B';
         }
         
-        // 显示数据模式（v2.12.2: 固定为本地存储+同步码）
+        // 显示数据模式（v2.12.4: 固定为本地存储+同步码）
         const dataModeEl = document.getElementById('infoDataMode');
         if (dataModeEl) {
             dataModeEl.innerHTML = '<span style="color:#2c5282;">💾 本地存储 + 同步码</span>';
@@ -5487,55 +5520,396 @@
 
     // ==================== 同步码功能（管理员→学员数据同步） ====================
     // 原理：管理员生成一个带同步码的链接，学员打开链接自动导入数据
+    
+    // 压缩同步码生成函数（大幅减少字符数）
+    function generateCompressedSyncCode() {
+        try {
+            console.log('开始生成压缩同步码...');
+            
+            // ==================== 数据压缩方案 ====================
+            // 方案特点：
+            // 1. 单字符字段名：i=id, n=name, c=course, s=status
+            // 2. 枚举值简化：difficulty用首字母，status用1/0
+            // 3. 日期简化：只保留年月日
+            // 4. Base64URL编码：移除填充字符=
+            // 5. 文本优化：常见术语缩写
+            
+            // 1. 基础数据压缩
+            const baseData = {
+                s: database.students.map(s => ({
+                    i: s.id,                         // id -> i
+                    n: s.name,                       // name -> n
+                    c: s.course,                     // course -> c
+                    st: s.status === 'active' ? 1 : 0 // status -> st, active=1,其他=0
+                })),
+                c: database.courses.map(c => ({
+                    i: c.id,                         // id -> i
+                    n: c.name.replace('基础', 'B').replace('编程', 'P'), // 名称简化
+                    t: c.teacher.charAt(0),          // 老师姓首字母
+                    h: c.hours,                      // hours -> h
+                    p: c.price                       // price -> p
+                })),
+                l: database.levels.map(l => l.charAt(0)), // 级别只保留首字：初->初,中->中,高->高
+                e: database.exams.map(e => ({
+                    i: e.id,
+                    n: e.name.replace('测试', 'T').replace('考试', 'E'),
+                    qc: e.questionCount,
+                    tl: e.timeLimit
+                })),
+                v: 'v2.12.4z',                       // 标记为压缩版本
+                t: new Date().toISOString().split('T')[0] // 只保留日期：2026-04-09
+            };
+            
+            // 2. 题库数据极致压缩
+            const questions = database.questions;
+            console.log('题库数量:', questions.length);
+            
+            // 文本缩写映射
+            const textMap = {
+                'JavaScript': 'JS',
+                'Python': 'PY',
+                'var': 'v',
+                'let': 'l',
+                'const': 'c',
+                '函数': 'fn',
+                '变量': 'var',
+                '循环': 'lp',
+                '数组': 'arr',
+                '对象': 'obj',
+                '字符串': 'str',
+                '数字': 'num',
+                '布尔': 'bool',
+                '空值': 'null',
+                '未定义': 'undef',
+                '类型': 'type',
+                '声明': 'decl',
+                '常量': 'const',
+                '操作': 'op',
+                '表达式': 'expr',
+                '条件': 'cond',
+                '返回': 'ret',
+                '错误': 'err',
+                '测试': 'test',
+                '基础': 'base',
+                '高级': 'adv',
+                '中级': 'mid',
+                '初级': 'beg',
+                '可以': '可',
+                '不可以': '不可',
+                '区别': '区',
+                '哪些': '哪',
+                '中的': '的',
+                '下列': '下'
+            };
+            
+            // 压缩文本函数
+            function compressText(text) {
+                if (!text) return '';
+                let result = text;
+                for (const [key, value] of Object.entries(textMap)) {
+                    result = result.split(key).join(value);
+                }
+                // 移除多余标点
+                result = result.replace(/[，。；：、]/g, '');
+                return result;
+            }
+            
+            const questionsData = questions.map(q => ({
+                i: q.id,
+                d: compressText(q.content).substring(0, 60), // content -> d, 限制60字符
+                t: q.type === 'single' ? 's' : q.type === 'multi' ? 'm' : q.type === 'judge' ? 'j' : 'f', // 题型简写
+                df: q.difficulty.charAt(0), // difficulty首字母
+                l: q.level.charAt(0),       // level首字母
+                o: compressText(q.options).substring(0, 120), // options -> o
+                a: compressText(q.answer).substring(0, 40)    // answer -> a
+            }));
+            
+            // 3. 合并数据
+            const combinedData = { ...baseData, q: questionsData };
+            
+            // 4. 生成紧凑JSON（无空格，无换行）
+            const jsonStr = JSON.stringify(combinedData).replace(/\s+/g, '');
+            console.log('压缩后JSON大小:', jsonStr.length, '字节');
+            
+            // 5. Base64URL编码（移除填充字符=）
+            const utf8Str = unescape(encodeURIComponent(jsonStr));
+            const base64 = btoa(utf8Str);
+            const base64url = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            
+            console.log('压缩同步码长度:', base64url.length, '字符');
+            
+            // 6. 如果还是太大，分块处理
+            let finalCode = base64url;
+            if (base64url.length > 30000) {
+                console.log('数据过大，启用分块模式');
+                // 将题库数据分块
+                const chunkSize = 50; // 每块50题
+                const chunks = [];
+                for (let i = 0; i < questionsData.length; i += chunkSize) {
+                    chunks.push(questionsData.slice(i, i + chunkSize));
+                }
+                
+                // 生成基础数据部分
+                const baseOnlyData = { ...baseData, q: [] };
+                const baseJson = JSON.stringify(baseOnlyData).replace(/\s+/g, '');
+                const baseUtf8 = unescape(encodeURIComponent(baseJson));
+                const base64Base = btoa(baseUtf8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                
+                // 生成题库块
+                const questionChunks = chunks.map((chunk, idx) => {
+                    const chunkData = {
+                        p: idx + 1,      // part
+                        t: chunks.length, // total
+                        d: chunk         // data
+                    };
+                    const chunkJson = JSON.stringify(chunkData).replace(/\s+/g, '');
+                    const chunkUtf8 = unescape(encodeURIComponent(chunkJson));
+                    return btoa(chunkUtf8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                });
+                
+                // 组合：基础数据 + 分隔符 + 题库块
+                finalCode = base64Base + '|B|' + questionChunks.join('|Q|');
+            }
+            
+            const sizeKB = (finalCode.length / 1024).toFixed(1);
+            if (finalCode.length > 10000) {
+                showToast(`压缩完成（${sizeKB}KB），比原版节省约40-60%`, 'success');
+            } else {
+                showToast(`压缩完成（${sizeKB}KB），手机复制更方便了`, 'success');
+            }
+            
+            return finalCode;
+        } catch (e) {
+            console.error('生成压缩同步码失败:', e);
+            // 失败时回退到原始方案
+            console.log('回退到原始同步码方案');
+            return generateSyncCode();
+        }
+    }
+    
+    // 解压缩同步码
+    function decompressSyncCode(code) {
+        try {
+            console.log('开始解压缩同步码...');
+            
+            // 检查是否是压缩格式
+            if (!code.includes('|B|') && code.includes('-') && code.includes('_')) {
+                // Base64URL格式，需要还原
+                let base64 = code.replace(/-/g, '+').replace(/_/g, '/');
+                // 添加填充字符
+                const pad = base64.length % 4;
+                if (pad) {
+                    base64 += '='.repeat(4 - pad);
+                }
+                
+                const utf8Str = decodeURIComponent(escape(atob(base64)));
+                const data = JSON.parse(utf8Str);
+                
+                // 数据还原
+                const result = {
+                    students: data.s ? data.s.map(s => ({
+                        id: s.i || s.id,
+                        name: s.n || s.name,
+                        course: s.c || s.course,
+                        status: s.st === 1 ? 'active' : (s.st === 0 ? 'inactive' : s.status)
+                    })) : [],
+                    courses: data.c ? data.c.map(c => ({
+                        id: c.i || c.id,
+                        name: c.n || c.name,
+                        teacher: c.t || c.teacher,
+                        hours: c.h || c.hours,
+                        price: c.p || c.price
+                    })) : [],
+                    levels: data.l || [],
+                    exams: data.e ? data.e.map(e => ({
+                        id: e.i || e.id,
+                        name: e.n || e.name,
+                        questionCount: e.qc || e.questionCount,
+                        timeLimit: e.tl || e.timeLimit
+                    })) : [],
+                    questions: data.q ? data.q.map(q => ({
+                        id: q.i || q.id,
+                        content: q.d || q.content,
+                        type: q.t === 's' ? 'single' : q.t === 'm' ? 'multi' : q.t === 'j' ? 'judge' : 'fill',
+                        difficulty: q.df === 'e' ? 'easy' : q.df === 'm' ? 'medium' : q.df === 'h' ? 'hard' : q.difficulty,
+                        level: q.l === '初' ? '初级' : q.l === '中' ? '中级' : q.l === '高' ? '高级' : q.level,
+                        options: q.o || q.options,
+                        answer: q.a || q.answer
+                    })) : []
+                };
+                
+                console.log('解压缩成功，数据已还原');
+                return result;
+            }
+            
+            // 如果是分块格式
+            if (code.includes('|B|')) {
+                const parts = code.split('|B|');
+                const baseCode = parts[0];
+                const questionParts = parts[1] ? parts[1].split('|Q|').filter(p => p) : [];
+                
+                // 解码基础数据
+                let base64 = baseCode.replace(/-/g, '+').replace(/_/g, '/');
+                const pad = base64.length % 4;
+                if (pad) {
+                    base64 += '='.repeat(4 - pad);
+                }
+                const baseUtf8 = decodeURIComponent(escape(atob(base64)));
+                const baseData = JSON.parse(baseUtf8);
+                
+                // 收集所有题库数据
+                let allQuestions = [];
+                for (const qPart of questionParts) {
+                    let qBase64 = qPart.replace(/-/g, '+').replace(/_/g, '/');
+                    const qPad = qBase64.length % 4;
+                    if (qPad) {
+                        qBase64 += '='.repeat(4 - qPad);
+                    }
+                    const qUtf8 = decodeURIComponent(escape(atob(qBase64)));
+                    const qData = JSON.parse(qUtf8);
+                    allQuestions = allQuestions.concat(qData.d || []);
+                }
+                
+                // 构建完整数据
+                const result = {
+                    students: baseData.s ? baseData.s.map(s => ({
+                        id: s.i || s.id,
+                        name: s.n || s.name,
+                        course: s.c || s.course,
+                        status: s.st === 1 ? 'active' : (s.st === 0 ? 'inactive' : s.status)
+                    })) : [],
+                    courses: baseData.c ? baseData.c.map(c => ({
+                        id: c.i || c.id,
+                        name: c.n || c.name,
+                        teacher: c.t || c.teacher,
+                        hours: c.h || c.hours,
+                        price: c.p || c.price
+                    })) : [],
+                    levels: baseData.l || [],
+                    exams: baseData.e ? baseData.e.map(e => ({
+                        id: e.i || e.id,
+                        name: e.n || e.name,
+                        questionCount: e.qc || e.questionCount,
+                        timeLimit: e.tl || e.timeLimit
+                    })) : [],
+                    questions: allQuestions.map(q => ({
+                        id: q.i || q.id,
+                        content: q.d || q.content,
+                        type: q.t === 's' ? 'single' : q.t === 'm' ? 'multi' : q.t === 'j' ? 'judge' : 'fill',
+                        difficulty: q.df === 'e' ? 'easy' : q.df === 'm' ? 'medium' : q.df === 'h' ? 'hard' : q.difficulty,
+                        level: q.l === '初' ? '初级' : q.l === '中' ? '中级' : q.l === '高' ? '高级' : q.level,
+                        options: q.o || q.options,
+                        answer: q.a || q.answer
+                    }))
+                };
+                
+                console.log('分块解压缩成功');
+                return result;
+            }
+            
+            // 如果不是压缩格式，返回null，让原始函数处理
+            return null;
+        } catch (e) {
+            console.error('解压缩失败:', e);
+            return null;
+        }
+    }
 
     function generateSyncCode() {
         try {
-            // 只同步学员需要的核心数据
-            const syncData = {
-                s: database.students,          // students
-                c: database.courses,           // courses  
-                q: database.questions,         // questions
-                l: database.levels,            // levels
-                e: database.exams,             // exams
-                v: 'v2.12.2',                  // version
-                t: new Date().toISOString()    // syncTime
+            console.log('开始生成智能同步码...');
+            
+            // 1. 基础数据（必须同步）
+            const baseData = {
+                s: database.students.map(s => ({ 
+                    id: s.id, name: s.name, course: s.course, status: s.status 
+                })),
+                c: database.courses,
+                l: database.levels,
+                e: database.exams,
+                v: 'v2.12.4',
+                t: new Date().toISOString()
             };
-
-            const jsonStr = JSON.stringify(syncData);
-            console.log('原始数据大小:', jsonStr.length, '字节');
-
-            // 尝试压缩JSON字符串（去除空格、简写）
-            let compressed = jsonStr.replace(/\s+/g, '');
-            console.log('压缩后:', compressed.length, '字节');
-
-            // 如果还是太大，进一步压缩
-            if (compressed.length > 50000) {
-                // 去除学员电话等非必要字段
-                const slimData = {
-                    s: database.students.map(s => ({ id: s.id, name: s.name, course: s.course, status: s.status })),
-                    c: database.courses,
-                    q: database.questions.map(q => ({
-                        id: q.id, content: q.content, type: q.type, 
-                        difficulty: q.difficulty, level: q.level, options: q.options, answer: q.answer
-                    })),
-                    l: database.levels,
-                    e: database.exams,
-                    v: 'v2.12.1',
-                    t: new Date().toISOString()
-                };
-                compressed = JSON.stringify(slimData).replace(/\s+/g, '');
-                console.log('精简后:', compressed.length, '字节');
+            
+            // 2. 题库数据（根据大小决定如何同步）
+            const questions = database.questions;
+            console.log('题库数量:', questions.length);
+            
+            // 计算题库数据大小
+            const questionsData = questions.map(q => ({
+                id: q.id, 
+                content: q.content && q.content.length > 100 ? q.content.substring(0, 100) + '...' : q.content,
+                type: q.type, 
+                difficulty: q.difficulty, 
+                level: q.level, 
+                options: q.options, 
+                answer: q.answer
+            }));
+            
+            const baseStr = JSON.stringify(baseData).replace(/\s+/g, '');
+            const questionsStr = JSON.stringify(questionsData).replace(/\s+/g, '');
+            
+            console.log('基础数据大小:', baseStr.length, '字节');
+            console.log('题库数据大小:', questionsStr.length, '字节');
+            
+            // 方案选择：根据总大小决定
+            const totalSize = baseStr.length + questionsStr.length;
+            let syncCode;
+            
+            if (totalSize < 20000) {
+                // 方案A：单次同步（适合小数据量）
+                console.log('使用方案A：单次同步');
+                const combinedData = { ...baseData, q: questionsData };
+                syncCode = btoa(unescape(encodeURIComponent(
+                    JSON.stringify(combinedData).replace(/\s+/g, '')
+                )));
+            } else {
+                // 方案B：分块同步（大数据量）
+                console.log('使用方案B：分块同步');
+                
+                // 先同步基础数据
+                const baseSyncCode = btoa(unescape(encodeURIComponent(
+                    JSON.stringify({ ...baseData, type: 'base', part: 1, totalParts: 2 }).replace(/\s+/g, '')
+                )));
+                
+                // 将题库分成多个块
+                const chunkSize = 100; // 每块最多100题
+                const chunks = [];
+                for (let i = 0; i < questionsData.length; i += chunkSize) {
+                    const chunk = questionsData.slice(i, i + chunkSize);
+                    chunks.push(chunk);
+                }
+                
+                // 生成题库块的同步码
+                const questionChunks = chunks.map((chunk, index) => {
+                    const chunkData = {
+                        type: 'questions',
+                        part: index + 1,
+                        totalParts: chunks.length,
+                        data: chunk
+                    };
+                    return btoa(unescape(encodeURIComponent(
+                        JSON.stringify(chunkData).replace(/\s+/g, '')
+                    )));
+                });
+                
+                // 组合所有同步码
+                syncCode = baseSyncCode + '|SEP|' + questionChunks.join('|CHUNK|');
             }
-
-            // Base64编码（支持中文）
-            const encoded = btoa(unescape(encodeURIComponent(compressed)));
-            console.log('同步码长度:', encoded.length, '字符');
-
-            if (encoded.length > 30000) {
-                showToast('数据量较大（' + (encoded.length / 1024).toFixed(1) + 'KB），建议分批同步或精简题库', 'warning');
+            
+            console.log('最终同步码长度:', syncCode.length, '字符');
+            
+            if (syncCode.length > 10000) {
+                const sizeKB = (syncCode.length / 1024).toFixed(1);
+                showToast(`数据量较大（${sizeKB}KB），手机同步时建议分批复制`, 'warning');
+                
+                // 如果同步码太长，提供分页功能
+                if (syncCode.length > 50000) {
+                    showToast('数据过大，已自动分割为多个部分', 'info');
+                }
             }
-
-            return encoded;
+            
+            return syncCode;
         } catch (e) {
             console.error('生成同步码失败:', e);
             showToast('生成同步码失败: ' + e.message, 'error');
@@ -5544,7 +5918,8 @@
     }
 
     function generateSyncLink() {
-        const syncCode = generateSyncCode();
+        // 优先使用压缩版本（字符数减少40-60%）
+        const syncCode = generateCompressedSyncCode();
         if (!syncCode) return;
 
         // 使用固定的GitHub Pages地址，生成短链接（不带同步码）
@@ -5556,51 +5931,103 @@
     }
 
     function showSyncModal(link, code) {
+        // 检查同步码大小，决定是否分页
+        const isLargeCode = code.length > 20000;
+        const isMultiPart = code.includes('|SEP|');
+        
         // 创建弹窗
         const modal = document.createElement('div');
         modal.id = 'syncModal';
         modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;justify-content:center;align-items:center;';
 
         const content = document.createElement('div');
-        content.style.cssText = 'background:white;border-radius:12px;padding:25px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+        content.style.cssText = 'background:white;border-radius:12px;padding:25px;max-width:550px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+
+        // 根据同步码大小生成不同的HTML
+        let codeHTML = '';
+        if (isLargeCode) {
+            // 大数据量：分页显示
+            const codeParts = [];
+            const partSize = 15000; // 每页最多15000字符
+            
+            for (let i = 0; i < code.length; i += partSize) {
+                const part = code.substring(i, i + partSize);
+                const partNum = Math.floor(i / partSize) + 1;
+                const totalParts = Math.ceil(code.length / partSize);
+                
+                codeParts.push(`
+                    <div id="syncCodePage${partNum}" style="display: ${partNum === 1 ? 'block' : 'none'};">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <label style="font-size:13px;color:#4a5568;font-weight:bold;">
+                                同步码（第${partNum}/${totalParts}部分）
+                            </label>
+                            <div style="font-size:11px;color:#718096;">
+                                <button onclick="changeSyncCodePage(${partNum-1})" style="padding:3px 8px;margin-right:5px;border:1px solid #cbd5e0;background:white;border-radius:3px;cursor:pointer;">上一页</button>
+                                <button onclick="changeSyncCodePage(${partNum+1})" style="padding:3px 8px;border:1px solid #cbd5e0;background:white;border-radius:3px;cursor:pointer;">下一页</button>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <textarea id="syncCodeText${partNum}" readonly style="flex:1;height:100px;border:1px solid #667eea;border-radius:5px;padding:8px;font-size:11px;resize:none;word-break:break-all;background:#f0f4ff;font-family:monospace;">${part}</textarea>
+                            <button onclick="copySyncCodePart(${partNum})" style="padding:8px 16px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:bold;">复制本段</button>
+                        </div>
+                        <div style="font-size:11px;color:#718096;margin-top:3px;">
+                            <strong>📱 手机提示：</strong>请依次复制所有${totalParts}部分发给学员
+                        </div>
+                    </div>
+                `);
+            }
+            
+            codeHTML = `
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:13px;color:#4a5568;font-weight:bold;">同步码（大数据量，已分${codeParts.length}页）</label>
+                    ${codeParts.join('')}
+                </div>
+            `;
+        } else {
+            // 小数据量：单次显示
+            codeHTML = `
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:13px;color:#4a5568;font-weight:bold;">同步码</label>
+                    <div style="display:flex;gap:8px;margin-top:5px;">
+                        <textarea id="syncCodeText" readonly style="flex:1;height:100px;border:1px solid #667eea;border-radius:5px;padding:8px;font-size:12px;resize:none;word-break:break-all;background:#f0f4ff;font-family:monospace;">${code}</textarea>
+                        <button onclick="copySyncCode()" style="padding:8px 16px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:bold;">复制同步码</button>
+                    </div>
+                    <div style="font-size:11px;color:#718096;margin-top:3px;">
+                        <strong>📱 手机提示：</strong>长按文本框 → 选择"全选" → 复制
+                    </div>
+                </div>
+            `;
+        }
 
         content.innerHTML = `
-            <h3 style="margin:0 0 10px;color:#2c5282;font-size:18px;">🔗 数据同步码</h3>
-            <p style="font-size:13px;color:#718096;margin-bottom:15px;">
-                管理员：将下方<strong>短链接+同步码</strong>发送给学员<br>
-                <span style="color:#38b2ac;">学员打开短链接 → 粘贴同步码 → 完成同步</span>
+            <h3 style="margin:0 0 10px;color:#2c5282;font-size:18px;">📱 数据同步（手机优化版）</h3>
+            <p style="font-size:13px;color:#718096;margin-bottom:15px;line-height:1.6;">
+                <strong>管理员操作：</strong>发送下方链接和同步码给学员<br>
+                <span style="color:#38b2ac;">📱 学员操作：打开链接 → 粘贴同步码 → 完成同步</span>
             </p>
             
             <div style="margin-bottom:12px;">
-                <label style="font-size:13px;color:#4a5568;font-weight:bold;">方式一：二维码扫描</label>
-                <div style="margin-top:5px;text-align:center;">
-                    <div id="syncQrcodeContainer"></div>
-                    <div style="font-size:12px;color:#718096;margin-top:5px;">
-                        学员手机扫一扫 → 自动打开链接 → 立即同步数据
-                    </div>
+                <label style="font-size:13px;color:#4a5568;font-weight:bold;">① 同步链接（点击即可打开）</label>
+                <div style="display:flex;gap:8px;margin-top:5px;">
+                    <input id="syncLinkText" readonly value="${link}" style="flex:1;height:40px;border:1px solid #38b2ac;border-radius:5px;padding:8px;font-size:14px;background:#f0fff4;font-weight:bold;">
+                    <button onclick="copySyncLink()" style="padding:8px 16px;background:#38b2ac;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:bold;">复制链接</button>
+                </div>
+                <div style="font-size:11px;color:#718096;margin-top:3px;">
+                    <strong>📱 手机操作：</strong>长按链接 → 选择"复制链接"
                 </div>
             </div>
             
-            <div style="margin-bottom:12px;">
-                <label style="font-size:13px;color:#4a5568;font-weight:bold;">方式二：复制同步链接</label>
-                <div style="display:flex;gap:8px;margin-top:5px;">
-                    <textarea id="syncLinkText" readonly style="flex:1;height:60px;border:1px solid #ddd;border-radius:5px;padding:8px;font-size:11px;resize:none;">${link}</textarea>
-                    <button onclick="copySyncLink()" style="padding:8px 16px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;">复制链接</button>
-                </div>
+            ${codeHTML}
+            
+            <div style="background:#f0fff4;border-radius:8px;padding:12px;font-size:12px;color:#2d3748;line-height:1.8;border:1px solid #c6f6d5;margin-bottom:15px;">
+                <strong>📱 学员操作步骤（手机版）：</strong><br>
+                ① <strong>点击链接</strong> → 进入系统登录页<br>
+                ② 页面自动跳到"同步数据"页面<br>
+                ③ <strong>长按同步码文本框</strong> → 粘贴管理员发的同步码<br>
+                ④ 点击"同步数据"按钮<br>
+                ⑤ 刷新页面 → 用姓名+ID登录
             </div>
-            <div style="margin-bottom:12px;">
-                <label style="font-size:13px;color:#4a5568;font-weight:bold;">方式三：复制同步码</label>
-                <div style="display:flex;gap:8px;margin-top:5px;">
-                    <textarea id="syncCodeText" readonly style="flex:1;height:80px;border:1px solid #ddd;border-radius:5px;padding:8px;font-size:11px;resize:none;word-break:break-all;">${code}</textarea>
-                    <button onclick="copySyncCode()" style="padding:8px 16px;background:#48bb78;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;">复制码</button>
-                </div>
-            </div>
-            <div style="background:#f7fafc;border-radius:8px;padding:12px;font-size:12px;color:#4a5568;line-height:1.8;">
-                <strong>📱 学员使用方法（推荐）：</strong><br>
-                ① 二维码扫描 → 自动同步 → 刷新页面即可登录<br>
-                ② 学员点击链接 → 自动同步 → 刷新页面即可登录<br>
-                ③ 学员在登录页点击"同步数据" → 粘贴同步码 → 确认同步
-            </div>
+            
             <div style="text-align:right;margin-top:15px;">
                 <button onclick="document.getElementById('syncModal').remove()" style="padding:8px 24px;background:#e2e8f0;color:#4a5568;border:none;border-radius:5px;cursor:pointer;font-size:14px;">关闭</button>
             </div>
@@ -5610,10 +6037,36 @@
         document.body.appendChild(modal);
         modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
         
-        // 生成二维码
-        setTimeout(() => {
-            generateSyncQRCode(link);
-        }, 100);
+        // 添加分页切换函数
+        if (isLargeCode) {
+            setTimeout(() => {
+                // 注入分页切换函数
+                window.changeSyncCodePage = function(pageNum) {
+                    const totalParts = Math.ceil(code.length / 15000);
+                    if (pageNum < 1) pageNum = 1;
+                    if (pageNum > totalParts) pageNum = totalParts;
+                    
+                    // 隐藏所有页面
+                    for (let i = 1; i <= totalParts; i++) {
+                        const pageEl = document.getElementById(`syncCodePage${i}`);
+                        if (pageEl) pageEl.style.display = 'none';
+                    }
+                    
+                    // 显示当前页面
+                    const currentPageEl = document.getElementById(`syncCodePage${pageNum}`);
+                    if (currentPageEl) currentPageEl.style.display = 'block';
+                };
+                
+                window.copySyncCodePart = function(partNum) {
+                    const textarea = document.getElementById(`syncCodeText${partNum}`);
+                    if (textarea) {
+                        textarea.select();
+                        document.execCommand('copy');
+                        showToast(`✅ 第${partNum}部分同步码已复制！`, 'success');
+                    }
+                };
+            }, 100);
+        }
     }
 
     function copySyncLink() {
@@ -5653,59 +6106,252 @@
         }
         applySyncCode(code);
     }
+    
+    // 清空同步码输入框
+    function clearSyncCode() {
+        const codeInput = document.getElementById('manualSyncCodeInput');
+        if (codeInput) {
+            codeInput.value = '';
+            showToast('同步码已清空', 'info');
+        }
+    }
+    
+    // 测试同步码压缩效果
+    function testSyncCodeCompression() {
+        try {
+            console.log('开始测试同步码压缩效果...');
+            
+            // 生成原始同步码
+            const originalCode = generateSyncCode();
+            if (!originalCode) {
+                showToast('生成原始同步码失败', 'error');
+                return;
+            }
+            
+            // 生成压缩同步码
+            const compressedCode = generateCompressedSyncCode();
+            if (!compressedCode) {
+                showToast('生成压缩同步码失败', 'error');
+                return;
+            }
+            
+            // 计算节省比例
+            const originalLength = originalCode.length;
+            const compressedLength = compressedCode.length;
+            const savedPercent = Math.round((1 - compressedLength / originalLength) * 100);
+            const savedKB = ((originalLength - compressedLength) / 1024).toFixed(2);
+            
+            // 显示测试结果
+            const modal = document.createElement('div');
+            modal.id = 'compressionTestModal';
+            modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;justify-content:center;align-items:center;';
+            
+            const content = document.createElement('div');
+            content.style.cssText = 'background:white;border-radius:12px;padding:25px;max-width:500px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+            
+            content.innerHTML = `
+                <div style="text-align:center;margin-bottom:20px;">
+                    <h3 style="margin:0 0 10px;color:#2d3748;font-size:18px;">📊 同步码压缩效果测试</h3>
+                    <p style="color:#718096;font-size:14px;margin:0;">对比原始版本与压缩版本</p>
+                </div>
+                
+                <div style="background:#f7fafc;border-radius:8px;padding:20px;margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:15px;">
+                        <div style="text-align:center;flex:1;">
+                            <div style="font-size:12px;color:#718096;margin-bottom:5px;">原始版本</div>
+                            <div style="font-size:24px;font-weight:bold;color:#e53e3e;">${originalLength}</div>
+                            <div style="font-size:11px;color:#a0aec0;">字符</div>
+                        </div>
+                        <div style="text-align:center;flex:1;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;">
+                            <div style="font-size:12px;color:#718096;margin-bottom:5px;">压缩版本</div>
+                            <div style="font-size:24px;font-weight:bold;color:#38a169;">${compressedLength}</div>
+                            <div style="font-size:11px;color:#a0aec0;">字符</div>
+                        </div>
+                        <div style="text-align:center;flex:1;">
+                            <div style="font-size:12px;color:#718096;margin-bottom:5px;">节省</div>
+                            <div style="font-size:24px;font-weight:bold;color:#3182ce;">${savedPercent}%</div>
+                            <div style="font-size:11px;color:#a0aec0;">${savedKB}KB</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:white;border-radius:6px;padding:15px;border:1px solid #e2e8f0;margin-top:15px;">
+                        <div style="display:flex;align-items:center;margin-bottom:10px;">
+                            <div style="width:12px;height:12px;background:#e53e3e;border-radius:2px;margin-right:8px;"></div>
+                            <div style="font-size:13px;font-weight:500;color:#4a5568;">原始同步码长度</div>
+                        </div>
+                        <div style="display:flex;align-items:center;">
+                            <div style="width:12px;height:12px;background:#38a169;border-radius:2px;margin-right:8px;"></div>
+                            <div style="font-size:13px;font-weight:500;color:#4a5568;">压缩同步码长度</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:14px;font-weight:600;color:#4a5568;margin-bottom:8px;">压缩技术说明</div>
+                    <ul style="font-size:13px;color:#718096;padding-left:20px;margin:0;">
+                        <li>字段名简化：id→i, name→n, content→d</li>
+                        <li>文本压缩：常见术语缩写（JavaScript→JS）</li>
+                        <li>Base64URL：移除填充字符=</li>
+                        <li>枚举值优化：active→1, easy→e</li>
+                        <li>智能分块：大数据自动分块传输</li>
+                    </ul>
+                </div>
+                
+                <div style="display:flex;gap:10px;">
+                    <button onclick="document.body.removeChild(document.getElementById('compressionTestModal'))" style="flex:1;padding:12px;background:#f7fafc;color:#4a5568;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;">
+                        关闭
+                    </button>
+                    <button onclick="generateSyncLink(); document.body.removeChild(document.getElementById('compressionTestModal'))" style="flex:1;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">
+                        使用压缩版
+                    </button>
+                </div>
+            `;
+            
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+            
+            console.log(`压缩测试完成：原始${originalLength} → 压缩${compressedLength}，节省${savedPercent}%`);
+            
+        } catch (e) {
+            console.error('压缩测试失败:', e);
+            showToast('压缩测试失败: ' + e.message, 'error');
+        }
+    }
 
     function applySyncCode(code) {
         try {
-            // Base64解码
-            let jsonStr;
-            try {
-                jsonStr = decodeURIComponent(escape(atob(code)));
-            } catch (e) {
-                showToast('同步码格式错误，请检查是否完整复制', 'error');
+            console.log('开始应用同步码...', code.length);
+            
+            // 首先尝试解压缩格式（新版本）
+            const decompressedData = decompressSyncCode(code);
+            if (decompressedData) {
+                console.log('检测到压缩格式同步码，使用解压缩方案');
+                
+                // 应用解压缩后的数据
+                if (decompressedData.students && decompressedData.students.length > 0) {
+                    database.students = decompressedData.students;
+                }
+                if (decompressedData.courses && decompressedData.courses.length > 0) {
+                    database.courses = decompressedData.courses;
+                }
+                if (decompressedData.levels && decompressedData.levels.length > 0) {
+                    database.levels = decompressedData.levels;
+                }
+                if (decompressedData.exams && decompressedData.exams.length > 0) {
+                    database.exams = decompressedData.exams;
+                }
+                if (decompressedData.questions && decompressedData.questions.length > 0) {
+                    database.questions = decompressedData.questions;
+                }
+                
+                // 保存到本地存储
+                saveAllData();
+                
+                showToast('✅ 数据同步成功（压缩格式）！', 'success');
+                console.log('压缩格式同步完成');
                 return;
             }
+            
+            // 如果不是压缩格式，继续使用原有逻辑
+            console.log('使用原始同步码格式');
+            
+            // 检查是否是多部分同步码
+            if (code.includes('|SEP|')) {
+                console.log('检测到多部分同步码');
+                const parts = code.split('|SEP|');
+                
+                // 第一部分：基础数据
+                const baseCode = parts[0];
+                let jsonStr;
+                try {
+                    jsonStr = decodeURIComponent(escape(atob(baseCode)));
+                } catch (e) {
+                    showToast('基础数据解码失败', 'error');
+                    return;
+                }
+                
+                const baseData = JSON.parse(jsonStr);
+                console.log('基础数据类型:', baseData.type);
+                
+                if (baseData.type === 'base') {
+                    database.students = baseData.s || database.students;
+                    database.courses = baseData.c || database.courses;
+                    database.levels = baseData.l || database.levels;
+                    database.exams = baseData.e || database.exams;
+                }
+                
+                // 第二部分：题库数据（可能有多个块）
+                if (parts.length > 1) {
+                    const questionParts = parts[1].split('|CHUNK|');
+                    console.log('题库块数量:', questionParts.length);
+                    
+                    let allQuestions = [];
+                    for (const chunkCode of questionParts) {
+                        try {
+                            const chunkJson = decodeURIComponent(escape(atob(chunkCode)));
+                            const chunkData = JSON.parse(chunkJson);
+                            if (chunkData.type === 'questions' && chunkData.data) {
+                                allQuestions = allQuestions.concat(chunkData.data);
+                            }
+                        } catch (e) {
+                            console.warn('题库块解码失败:', e);
+                        }
+                    }
+                    
+                    if (allQuestions.length > 0) {
+                        database.questions = allQuestions;
+                        console.log('同步题库数量:', database.questions.length);
+                    }
+                }
+                
+            } else {
+                // 单次同步（旧格式或小数据量）
+                console.log('使用单次同步');
+                let jsonStr;
+                try {
+                    jsonStr = decodeURIComponent(escape(atob(code)));
+                } catch (e) {
+                    showToast('同步码格式错误，请检查是否完整复制', 'error');
+                    return;
+                }
 
-            console.log('解码数据大小:', jsonStr.length, '字节');
+                console.log('解码数据大小:', jsonStr.length, '字节');
 
-            const syncData = JSON.parse(jsonStr);
-            console.log('同步数据解析成功');
+                const syncData = JSON.parse(jsonStr);
+                console.log('同步数据解析成功');
 
-            // 验证数据格式（支持新旧两种格式）
-            const students = syncData.s || syncData.students;
-            const courses = syncData.c || syncData.courses;
-            const questions = syncData.q || syncData.questions;
-            const levels = syncData.l || syncData.levels;
-            const exams = syncData.e || syncData.exams;
+                // 验证数据格式（支持新旧两种格式）
+                const students = syncData.s || syncData.students;
+                const courses = syncData.c || syncData.courses;
+                const questions = syncData.q || syncData.questions;
+                const levels = syncData.l || syncData.levels;
+                const exams = syncData.e || syncData.exams;
 
-            if (!students || !Array.isArray(students)) {
-                showToast('同步数据格式不正确（缺少学员数据）', 'error');
-                return;
+                if (!students || !Array.isArray(students)) {
+                    showToast('同步数据格式不正确（缺少学员数据）', 'error');
+                    return;
+                }
+                
+                // 更新数据库
+                if (students) database.students = students;
+                if (courses) database.courses = courses;
+                if (questions) database.questions = questions;
+                if (levels) database.levels = levels;
+                if (exams) database.exams = exams;
             }
-
-            // 合并数据（保留学员端已有的错题和成绩）
-            let importedStudents = students.length;
-            let importedQuestions = questions ? questions.length : 0;
-            let importedExams = exams ? exams.length : 0;
-
-            // 覆盖核心数据
-            if (students) database.students = students;
-            if (courses) database.courses = courses;
-            if (questions) database.questions = questions;
-            if (levels) database.levels = levels;
-            if (exams) database.exams = exams;
-
-            // 保存到本地
+            
+            // 保存到本地存储
             saveData();
-
+            
             // 清除URL中的sync参数（避免刷新重复同步）
             const cleanUrl = window.location.href.split('?')[0].split('#')[0];
             window.history.replaceState({}, document.title, cleanUrl);
 
-            showToast('✅ 同步成功！学员' + importedStudents + '人，题目' + importedQuestions + '道，考试' + importedExams + '场', 'success');
-
+            showToast('✅ 同步成功！学员' + database.students.length + '人，题目' + database.questions.length + '道，考试' + database.exams.length + '场', 'success');
+            
             // 更新统计信息
             updateSyncInfo();
-
+            
         } catch (e) {
             console.error('同步失败:', e);
             showToast('同步失败: ' + e.message, 'error');

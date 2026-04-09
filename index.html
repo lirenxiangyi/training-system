@@ -1890,39 +1890,26 @@
             'teacher': { password: '123456', role: 'teacher', displayName: '教师' }
         },
         students: [
-            { id: 'S001', name: '张三', phone: '13800138000', course: 'JavaScript', status: 'active' },
-            { id: 'S002', name: '李四', phone: '13800138001', course: 'Python', status: 'active' },
-            { id: 'S003', name: '李庆', phone: '13800138002', course: 'JavaScript', status: 'active' }
+            { id: 'S001', name: '老李', phone: '2222222', course: '机电技术人员能力提升班', status: 'active' },
+            { id: 'S002', name: '小汪', phone: '44444444', course: '机电技术人员能力提升班', status: 'active' },
+            { id: 'S003', name: '小谭', phone: '33333333', course: '机电技术人员能力提升班', status: 'active' },
+            { id: 'S004', name: '小胡', phone: '11111111', course: '机电技术人员能力提升班', status: 'active' }
         ],
         courses: [
-            { id: 'C001', name: 'JavaScript基础', teacher: '王老师', hours: 40, price: 999, enrollCount: 15 },
-            { id: 'C002', name: 'Python编程', teacher: '李老师', hours: 50, price: 1299, enrollCount: 20 }
+            { id: 'C001', name: '机电技术人员能力提升班', teacher: '冉鹏工作室', hours: 40, price: 0, enrollCount: 4 }
         ],
         grades: [
-            { studentId: 'S001', studentName: '张三', course: 'JavaScript', normal: 85, final: 90, composite: 87 },
-            { studentId: 'S002', studentName: '李四', course: 'Python', normal: 88, final: 92, composite: 90 }
+            { studentId: 'S001', studentName: '老李', course: '机电技术人员能力提升班', normal: 0, final: 0, composite: 0 }
         ],
-        questions: [
-            { id: 'Q001', content: 'JavaScript中var和let的区别是什么？', type: 'single', difficulty: 'medium', level: '初级', options: 'var可以重复声明|let不可以重复声明|var不可以重复声明|let可以重复声明|let不可以重复声明', answer: 'let不可以重复声明' },
-            { id: 'Q002', content: '下列哪些是JavaScript中的基本数据类型？', type: 'multi', difficulty: 'easy', level: '初级', options: 'String|Number|Boolean|Object|Undefined|Null|String,Number,Boolean,Undefined,Null', answer: 'String,Number,Boolean,Undefined,Null' }
-        ],
+        questions: [],
         levels: ['初级', '中级', '高级'],
-        exams: [
-            { id: 'E001', name: '前端基础测试', questionCount: 2, timeLimit: 60, participants: 5, status: 'active', questions: [] }
-        ],
+        exams: [],
         scores: [],
         teachers: [
-            { id: 'T001', name: '王老师', experience: 5, courses: 'JavaScript基础' },
-            { id: 'T002', name: '李老师', experience: 8, courses: 'Python编程' }
+            { id: 'T001', name: '冉鹏工作室', experience: 10, courses: '机电技术人员能力提升班' }
         ],
-        fees: [
-            { id: 'F001', studentName: '张三', course: 'JavaScript', amount: 999, date: '2026-03-20', status: 'paid' },
-            { id: 'F002', studentName: '李四', course: 'Python', amount: 1299, date: '2026-03-21', status: 'pending' }
-        ],
-        notices: [
-            { id: 'N001', title: '系统维护通知', type: 'info', content: '周六晚上进行系统维护', date: '2026-03-25' },
-            { id: 'N002', title: '紧急通知', type: 'emergency', content: '所有学员请于周五前完成作业', date: '2026-03-26' }
-        ],
+        fees: [],
+        notices: [],
         attendance: [],
         schedules: [],
         profiles: [],

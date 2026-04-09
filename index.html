@@ -22,9 +22,9 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.9.1 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.9.2 - LOADED AT ' + new Date().toISOString());
     </script>
-    <title>冉鹏工作室培训管理系统 v2.9.1</title>
+    <title>冉鹏工作室培训管理系统 v2.9.2</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -1961,15 +1961,18 @@
     }
     
     function doStudentLogin() {
-        const name = document.getElementById('studentName').value;
-        const id = document.getElementById('studentID').value;
+        const name = document.getElementById('studentName').value.trim();
+        const id = document.getElementById('studentID').value.trim();
         
         if (!name || !id) {
             showToast('请输入姓名和学员ID', 'error');
             return;
         }
         
-        const student = database.students.find(s => s.id === id && s.name === name);
+        // 精确匹配（忽略大小写，忽略空格）
+        const student = database.students.find(s => 
+            s.id.trim() === id && s.name.trim() === name
+        );
         if (student) {
             currentUser = name;
             currentRole = 'student';
@@ -2919,8 +2922,8 @@
     
     function saveStudent() {
         const id = document.getElementById('studentIdInput').value.trim();
-        const name = document.getElementById('studentName_add').value;
-        const phone = document.getElementById('studentPhone').value;
+        const name = document.getElementById('studentName_add').value.trim();
+        const phone = document.getElementById('studentPhone').value.trim();
         const course = document.getElementById('studentCourse').value;
         
         if (!id) {

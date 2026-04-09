@@ -22,9 +22,26 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.9.2 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.12.2 - LOADED AT ' + new Date().toISOString());
+    
+    // 页面加载时检查：如果是通过短链接打开的，自动切换到同步数据tab
+    window.addEventListener('DOMContentLoaded', function() {
+        // 检查是否是通过短链接打开的（没有sync参数）
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasSyncParam = urlParams.has('sync');
+        
+        if (!hasSyncParam && window.location.href.includes('training-system')) {
+            // 短链接打开，自动切换到同步数据tab
+            setTimeout(() => {
+                const syncTab = document.querySelector('.login-tab[onclick*="switchLoginTab(\'sync\'"]');
+                if (syncTab) {
+                    syncTab.click();
+                }
+            }, 200);
+        }
+    });
     </script>
-    <title>冉鹏工作室培训管理系统 v2.9.2</title>
+    <title>冉鹏工作室培训管理系统 v2.12.2</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -815,8 +832,8 @@
             }
         }
     </style>
-    <!-- 腾讯云开发 SDK -->
-    <script src="https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js"></script>
+    <!-- v2.11.0: 使用本地存储 + 同步码方案，无需云SDK -->
+    <!-- v2.12.2: 二维码功能替代方案 + 同步链接优化 -->
 </head>
 <body>
 
@@ -824,11 +841,12 @@
 <div id="loginPage" class="login-container">
     <div class="login-card">
         <h1>冉鹏工作室</h1>
-        <p>培训管理系统 v2.9.2</p>
+        <p>培训管理系统 v2.12.2</p>
         
         <div class="login-tabs">
             <button class="login-tab active" onclick="switchLoginTab('admin', this)">管理员登陆</button>
             <button class="login-tab" onclick="switchLoginTab('student', this)">学员考试登陆</button>
+            <button class="login-tab" onclick="switchLoginTab('sync', this)">同步数据</button>
         </div>
         
         <!-- 管理员登陆 -->
@@ -849,7 +867,24 @@
             <div class="login-tabs" style="margin-bottom:15px;border-bottom:1px solid #eee;">
                 <button class="login-tab active" onclick="switchStudentLoginTab('password',this)" style="font-size:12px;padding:6px;">账号密码</button>
                 <button class="login-tab" onclick="switchStudentLoginTab('quicklink',this)" style="font-size:12px;padding:6px;">快捷登录</button>
+                <button class="login-tab" onclick="toggleSyncPanel();this.classList.toggle('active')" style="font-size:12px;padding:6px;">同步数据</button>
             </div>
+
+            <!-- 同步数据面板（v2.11.0 新功能） -->
+            <div id="syncPanel" style="display:none;margin-bottom:15px;">
+                <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:12px;">
+                    <p style="font-size:12px;color:#276749;margin:0 0 8px;">
+                        <strong>📱 数据同步</strong><br>
+                        如果提示"找不到学员"，请联系管理员获取同步码后在此粘贴
+                    </p>
+                    <textarea id="manualSyncCodeInput" placeholder="将管理员发来的同步码粘贴到这里..." style="width:100%;height:70px;border:1px solid #d0d0d0;border-radius:5px;padding:8px;font-size:11px;resize:none;"></textarea>
+                    <button onclick="manualSyncCode()" style="width:100%;margin-top:8px;padding:8px;background:#48bb78;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;">
+                        ✅ 确认同步
+                    </button>
+                    <p id="syncInfoText" style="font-size:11px;color:#718096;margin:8px 0 0;text-align:center;"></p>
+                </div>
+            </div>
+
             <div id="studentPasswordLogin">
                 <div class="form-group">
                     <label>学员姓名</label>
@@ -1452,13 +1487,34 @@
                     </div>
                     <input type="file" id="importBackupFile" style="display:none" accept=".json" onchange="importFullBackup()">
                 </div>
+
+                <!-- 数据同步码（v2.12.2 新功能） -->
+                <div style="background:linear-gradient(135deg,#ebf4ff,#e9d8fd);border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:2px solid #667eea;">
+                    <h3 style="margin:0 0 10px;font-size:15px;color:#553c9a;">🔗 数据同步码</h3>
+                    <p style="font-size:13px;color:#553c9a;margin-bottom:12px;">
+                        生成同步链接/二维码，发送给学员手机端，学员打开即可同步所有学员数据、题库和考试信息。<br>
+                        <strong>无需学员逐个导入，一键搞定！支持二维码扫码同步</strong>
+                    </p>
+                    <button class="btn" onclick="generateSyncLink()" style="width:100%;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(102,126,234,0.4);">
+                        🚀 生成同步码（支持二维码）
+                    </button>
+                    <div style="margin-top:10px;font-size:11px;color:#718096;line-height:1.8;">
+                        <p>📋 使用流程：</p>
+                        <ol style="padding-left:18px;margin:0;">
+                            <li>点击上方按钮，生成同步链接</li>
+                            <li>复制链接，通过微信/QQ发送给学员</li>
+                            <li>学员打开链接，自动同步数据</li>
+                            <li>学员刷新页面，即可用姓名+ID登录</li>
+                        </ol>
+                    </div>
+                </div>
                 
                 <!-- 系统信息 -->
                 <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
                     <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">ℹ️ 系统信息</h3>
                     <div style="font-size:13px;color:#4a5568;line-height:2;">
-                        <p>系统版本：<strong>v2.5.6-nav</strong></p>
-                        <p>数据模式：<span id="infoDataMode" style="font-weight:bold;">检测中...</span></p>
+                        <p>系统版本：<strong>v2.12.2</strong></p>
+                        <p>数据模式：<span style="font-weight:bold;color:#2c5282;">💾 本地存储 + 同步码</span></p>
                         <p>学员数量：<span id="infoStudentCount">0</span></p>
                         <p>课程数量：<span id="infoCourseCount">0</span></p>
                         <p>考试数量：<span id="infoExamCount">0</span></p>
@@ -1890,26 +1946,39 @@
             'teacher': { password: '123456', role: 'teacher', displayName: '教师' }
         },
         students: [
-            { id: 'S001', name: '老李', phone: '2222222', course: '机电技术人员能力提升班', status: 'active' },
-            { id: 'S002', name: '小汪', phone: '44444444', course: '机电技术人员能力提升班', status: 'active' },
-            { id: 'S003', name: '小谭', phone: '33333333', course: '机电技术人员能力提升班', status: 'active' },
-            { id: 'S004', name: '小胡', phone: '11111111', course: '机电技术人员能力提升班', status: 'active' }
+            { id: 'S001', name: '张三', phone: '13800138000', course: 'JavaScript', status: 'active' },
+            { id: 'S002', name: '李四', phone: '13800138001', course: 'Python', status: 'active' },
+            { id: 'S003', name: '李庆', phone: '13800138002', course: 'JavaScript', status: 'active' }
         ],
         courses: [
-            { id: 'C001', name: '机电技术人员能力提升班', teacher: '冉鹏工作室', hours: 40, price: 0, enrollCount: 4 }
+            { id: 'C001', name: 'JavaScript基础', teacher: '王老师', hours: 40, price: 999, enrollCount: 15 },
+            { id: 'C002', name: 'Python编程', teacher: '李老师', hours: 50, price: 1299, enrollCount: 20 }
         ],
         grades: [
-            { studentId: 'S001', studentName: '老李', course: '机电技术人员能力提升班', normal: 0, final: 0, composite: 0 }
+            { studentId: 'S001', studentName: '张三', course: 'JavaScript', normal: 85, final: 90, composite: 87 },
+            { studentId: 'S002', studentName: '李四', course: 'Python', normal: 88, final: 92, composite: 90 }
         ],
-        questions: [],
+        questions: [
+            { id: 'Q001', content: 'JavaScript中var和let的区别是什么？', type: 'single', difficulty: 'medium', level: '初级', options: 'var可以重复声明|let不可以重复声明|var不可以重复声明|let可以重复声明|let不可以重复声明', answer: 'let不可以重复声明' },
+            { id: 'Q002', content: '下列哪些是JavaScript中的基本数据类型？', type: 'multi', difficulty: 'easy', level: '初级', options: 'String|Number|Boolean|Object|Undefined|Null|String,Number,Boolean,Undefined,Null', answer: 'String,Number,Boolean,Undefined,Null' }
+        ],
         levels: ['初级', '中级', '高级'],
-        exams: [],
+        exams: [
+            { id: 'E001', name: '前端基础测试', questionCount: 2, timeLimit: 60, participants: 5, status: 'active', questions: [] }
+        ],
         scores: [],
         teachers: [
-            { id: 'T001', name: '冉鹏工作室', experience: 10, courses: '机电技术人员能力提升班' }
+            { id: 'T001', name: '王老师', experience: 5, courses: 'JavaScript基础' },
+            { id: 'T002', name: '李老师', experience: 8, courses: 'Python编程' }
         ],
-        fees: [],
-        notices: [],
+        fees: [
+            { id: 'F001', studentName: '张三', course: 'JavaScript', amount: 999, date: '2026-03-20', status: 'paid' },
+            { id: 'F002', studentName: '李四', course: 'Python', amount: 1299, date: '2026-03-21', status: 'pending' }
+        ],
+        notices: [
+            { id: 'N001', title: '系统维护通知', type: 'info', content: '周六晚上进行系统维护', date: '2026-03-25' },
+            { id: 'N002', title: '紧急通知', type: 'emergency', content: '所有学员请于周五前完成作业', date: '2026-03-26' }
+        ],
         attendance: [],
         schedules: [],
         profiles: [],
@@ -1925,7 +1994,20 @@
         if (clickedElement) {
             clickedElement.classList.add('active');
         }
-        document.getElementById(tab === 'admin' ? 'adminForm' : 'studentForm').classList.add('active');
+        
+        if (tab === 'admin') {
+            document.getElementById('adminForm').classList.add('active');
+        } else if (tab === 'student') {
+            document.getElementById('studentForm').classList.add('active');
+        } else if (tab === 'sync') {
+            // 切换到学员登录，并自动打开同步数据面板
+            document.getElementById('studentForm').classList.add('active');
+            setTimeout(() => {
+                toggleSyncPanel();
+                document.querySelectorAll('#studentForm .login-tab').forEach(t => t.classList.remove('active'));
+                document.querySelector('#studentForm .login-tab[onclick*="toggleSyncPanel"]').classList.add('active');
+            }, 50);
+        }
     }
     
     function doAdminLogin() {
@@ -5224,14 +5306,10 @@
             el2.textContent = size > 1024 ? (size / 1024).toFixed(1) + ' KB' : size + ' B';
         }
         
-        // 显示数据模式
+        // 显示数据模式（v2.12.2: 固定为本地存储+同步码）
         const dataModeEl = document.getElementById('infoDataMode');
         if (dataModeEl) {
-            if (isCloudReady) {
-                dataModeEl.innerHTML = '<span style="color:#38a169;">☁️ 云端同步</span>';
-            } else {
-                dataModeEl.innerHTML = '<span style="color:#e53e3e;">💾 本地存储</span>';
-            }
+            dataModeEl.innerHTML = '<span style="color:#2c5282;">💾 本地存储 + 同步码</span>';
         }
         
         document.getElementById('infoStudentCount').textContent = database.students.length;
@@ -5380,68 +5458,9 @@
     // 数据持久化
     const STORAGE_KEY = 'training_management_db';
 
-    // ==================== 云开发配置 ====================
-    const CLOUDBASE_CONFIG = {
-        env: 'ranpeng-training-4ft5k55788574ea',  // 环境ID
-        region: 'ap-shanghai'  // 地域
-    };
-
-    let cloudApp = null;
-    let cloudDb = null;
-    let isCloudReady = false;
-
-    // 初始化云开发
-    async function initCloudBase() {
-        try {
-            console.log('开始初始化云开发...');
-            
-            // 检查 cloudbase SDK 是否加载
-            if (typeof cloudbase === 'undefined') {
-                throw new Error('CloudBase SDK 未加载');
-            }
-            console.log('✅ CloudBase SDK 已加载');
-            
-            // 初始化 CloudBase
-            cloudApp = cloudbase.init(CLOUDBASE_CONFIG);
-            console.log('✅ CloudBase 初始化成功');
-            
-            // 匿名登录（控制台已开启）
-            const auth = cloudApp.auth();
-            console.log('开始匿名登录...');
-            await auth.anonymousAuthProvider().signIn();
-            console.log('✅ 匿名登录成功');
-            
-            cloudDb = cloudApp.database();
-            isCloudReady = true;
-            console.log('✅ 云开发初始化成功（匿名登录）');
-
-            // 从云端加载数据
-            await loadData();
-            return true;
-        } catch (e) {
-            console.error('❌ 云开发初始化失败:', e);
-            console.error('错误详情:', e.message || e);
-            
-            // 在页面上显示错误（调试用）
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#e53e3e;color:white;padding:15px 25px;border-radius:8px;z-index:9999;font-size:14px;';
-            errorDiv.innerHTML = '⚠️ 云开发初始化失败: ' + (e.message || e) + '<br>已降级到本地存储模式';
-            document.body.appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 8000);
-            
-            // 降级到本地存储
-            isCloudReady = false;
-            await loadData();
-            return false;
-        }
-    }
+    // ==================== 数据存储（纯本地） ====================
 
     function saveData() {
-        if (isCloudReady && cloudDb) {
-            // 异步保存到云数据库，不阻塞UI
-            saveToCloud().catch(e => console.warn('云端保存失败:', e));
-        }
-        // 同时保存到本地作为备份
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
         } catch (e) {
@@ -5449,52 +5468,7 @@
         }
     }
 
-    async function saveToCloud() {
-        if (!cloudDb) return;
-
-        const dataToSave = JSON.parse(JSON.stringify(database));
-
-        // 将整个database对象存到一个文档中
-        try {
-            const collection = cloudDb.collection('system_data');
-            const docId = 'main_database';
-
-            // 先尝试更新
-            const updateRes = await collection.doc(docId).set(dataToSave);
-            if (updateRes.updated === 0) {
-                // 如果更新失败，尝试创建
-                await collection.add({ _id: docId, ...dataToSave });
-            }
-            console.log('数据已同步到云端');
-        } catch (e) {
-            console.error('云端保存出错:', e);
-        }
-    }
-
-    async function loadData() {
-        // 先尝试从云端加载
-        if (isCloudReady && cloudDb) {
-            try {
-                const collection = cloudDb.collection('system_data');
-                const res = await collection.doc('main_database').get();
-
-                if (res.data && res.data.length > 0) {
-                    const cloudData = res.data[0];
-                    // 合并云端数据
-                    Object.keys(database).forEach(key => {
-                        if (cloudData[key] !== undefined) {
-                            database[key] = cloudData[key];
-                        }
-                    });
-                    console.log('从云端加载数据成功');
-                    return;
-                }
-            } catch (e) {
-                console.warn('云端加载失败，使用本地数据:', e);
-            }
-        }
-
-        // 降级到本地存储
+    function loadData() {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
@@ -5504,17 +5478,268 @@
                         database[key] = parsed[key];
                     }
                 });
+                console.log('从本地存储加载数据成功');
             }
         } catch (e) {
             console.warn('本地加载数据失败:', e);
         }
     }
+
+    // ==================== 同步码功能（管理员→学员数据同步） ====================
+    // 原理：管理员生成一个带同步码的链接，学员打开链接自动导入数据
+
+    function generateSyncCode() {
+        try {
+            // 只同步学员需要的核心数据
+            const syncData = {
+                s: database.students,          // students
+                c: database.courses,           // courses  
+                q: database.questions,         // questions
+                l: database.levels,            // levels
+                e: database.exams,             // exams
+                v: 'v2.12.2',                  // version
+                t: new Date().toISOString()    // syncTime
+            };
+
+            const jsonStr = JSON.stringify(syncData);
+            console.log('原始数据大小:', jsonStr.length, '字节');
+
+            // 尝试压缩JSON字符串（去除空格、简写）
+            let compressed = jsonStr.replace(/\s+/g, '');
+            console.log('压缩后:', compressed.length, '字节');
+
+            // 如果还是太大，进一步压缩
+            if (compressed.length > 50000) {
+                // 去除学员电话等非必要字段
+                const slimData = {
+                    s: database.students.map(s => ({ id: s.id, name: s.name, course: s.course, status: s.status })),
+                    c: database.courses,
+                    q: database.questions.map(q => ({
+                        id: q.id, content: q.content, type: q.type, 
+                        difficulty: q.difficulty, level: q.level, options: q.options, answer: q.answer
+                    })),
+                    l: database.levels,
+                    e: database.exams,
+                    v: 'v2.12.1',
+                    t: new Date().toISOString()
+                };
+                compressed = JSON.stringify(slimData).replace(/\s+/g, '');
+                console.log('精简后:', compressed.length, '字节');
+            }
+
+            // Base64编码（支持中文）
+            const encoded = btoa(unescape(encodeURIComponent(compressed)));
+            console.log('同步码长度:', encoded.length, '字符');
+
+            if (encoded.length > 30000) {
+                showToast('数据量较大（' + (encoded.length / 1024).toFixed(1) + 'KB），建议分批同步或精简题库', 'warning');
+            }
+
+            return encoded;
+        } catch (e) {
+            console.error('生成同步码失败:', e);
+            showToast('生成同步码失败: ' + e.message, 'error');
+            return null;
+        }
+    }
+
+    function generateSyncLink() {
+        const syncCode = generateSyncCode();
+        if (!syncCode) return;
+
+        // 使用固定的GitHub Pages地址，生成短链接（不带同步码）
+        const baseUrl = 'https://lirenxiangyi.github.io/training-system/';
+        const syncLink = baseUrl;
+
+        // 显示到弹窗
+        showSyncModal(syncLink, syncCode);
+    }
+
+    function showSyncModal(link, code) {
+        // 创建弹窗
+        const modal = document.createElement('div');
+        modal.id = 'syncModal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;justify-content:center;align-items:center;';
+
+        const content = document.createElement('div');
+        content.style.cssText = 'background:white;border-radius:12px;padding:25px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+
+        content.innerHTML = `
+            <h3 style="margin:0 0 10px;color:#2c5282;font-size:18px;">🔗 数据同步码</h3>
+            <p style="font-size:13px;color:#718096;margin-bottom:15px;">
+                管理员：将下方<strong>短链接+同步码</strong>发送给学员<br>
+                <span style="color:#38b2ac;">学员打开短链接 → 粘贴同步码 → 完成同步</span>
+            </p>
+            
+            <div style="margin-bottom:12px;">
+                <label style="font-size:13px;color:#4a5568;font-weight:bold;">方式一：二维码扫描</label>
+                <div style="margin-top:5px;text-align:center;">
+                    <div id="syncQrcodeContainer"></div>
+                    <div style="font-size:12px;color:#718096;margin-top:5px;">
+                        学员手机扫一扫 → 自动打开链接 → 立即同步数据
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom:12px;">
+                <label style="font-size:13px;color:#4a5568;font-weight:bold;">方式二：复制同步链接</label>
+                <div style="display:flex;gap:8px;margin-top:5px;">
+                    <textarea id="syncLinkText" readonly style="flex:1;height:60px;border:1px solid #ddd;border-radius:5px;padding:8px;font-size:11px;resize:none;">${link}</textarea>
+                    <button onclick="copySyncLink()" style="padding:8px 16px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;">复制链接</button>
+                </div>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:13px;color:#4a5568;font-weight:bold;">方式三：复制同步码</label>
+                <div style="display:flex;gap:8px;margin-top:5px;">
+                    <textarea id="syncCodeText" readonly style="flex:1;height:80px;border:1px solid #ddd;border-radius:5px;padding:8px;font-size:11px;resize:none;word-break:break-all;">${code}</textarea>
+                    <button onclick="copySyncCode()" style="padding:8px 16px;background:#48bb78;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;">复制码</button>
+                </div>
+            </div>
+            <div style="background:#f7fafc;border-radius:8px;padding:12px;font-size:12px;color:#4a5568;line-height:1.8;">
+                <strong>📱 学员使用方法（推荐）：</strong><br>
+                ① 二维码扫描 → 自动同步 → 刷新页面即可登录<br>
+                ② 学员点击链接 → 自动同步 → 刷新页面即可登录<br>
+                ③ 学员在登录页点击"同步数据" → 粘贴同步码 → 确认同步
+            </div>
+            <div style="text-align:right;margin-top:15px;">
+                <button onclick="document.getElementById('syncModal').remove()" style="padding:8px 24px;background:#e2e8f0;color:#4a5568;border:none;border-radius:5px;cursor:pointer;font-size:14px;">关闭</button>
+            </div>
+        `;
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+        
+        // 生成二维码
+        setTimeout(() => {
+            generateSyncQRCode(link);
+        }, 100);
+    }
+
+    function copySyncLink() {
+        const text = document.getElementById('syncLinkText');
+        text.select();
+        document.execCommand('copy');
+        showToast('✅ 同步链接已复制！发给学员即可', 'success');
+    }
+
+    function copySyncCode() {
+        const text = document.getElementById('syncCodeText');
+        text.select();
+        document.execCommand('copy');
+        showToast('✅ 同步码已复制！发给学员粘贴即可', 'success');
+    }
+
+    // 学员端：通过URL参数自动同步
+    function checkSyncParam() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const syncCode = urlParams.get('sync');
+        if (syncCode) {
+            console.log('检测到同步码参数，开始同步...');
+            applySyncCode(syncCode);
+            return true;
+        }
+        return false;
+    }
+
+    // 学员端：手动输入同步码同步
+    function manualSyncCode() {
+        const codeInput = document.getElementById('manualSyncCodeInput');
+        if (!codeInput) return;
+        const code = codeInput.value.trim();
+        if (!code) {
+            showToast('请先粘贴同步码', 'error');
+            return;
+        }
+        applySyncCode(code);
+    }
+
+    function applySyncCode(code) {
+        try {
+            // Base64解码
+            let jsonStr;
+            try {
+                jsonStr = decodeURIComponent(escape(atob(code)));
+            } catch (e) {
+                showToast('同步码格式错误，请检查是否完整复制', 'error');
+                return;
+            }
+
+            console.log('解码数据大小:', jsonStr.length, '字节');
+
+            const syncData = JSON.parse(jsonStr);
+            console.log('同步数据解析成功');
+
+            // 验证数据格式（支持新旧两种格式）
+            const students = syncData.s || syncData.students;
+            const courses = syncData.c || syncData.courses;
+            const questions = syncData.q || syncData.questions;
+            const levels = syncData.l || syncData.levels;
+            const exams = syncData.e || syncData.exams;
+
+            if (!students || !Array.isArray(students)) {
+                showToast('同步数据格式不正确（缺少学员数据）', 'error');
+                return;
+            }
+
+            // 合并数据（保留学员端已有的错题和成绩）
+            let importedStudents = students.length;
+            let importedQuestions = questions ? questions.length : 0;
+            let importedExams = exams ? exams.length : 0;
+
+            // 覆盖核心数据
+            if (students) database.students = students;
+            if (courses) database.courses = courses;
+            if (questions) database.questions = questions;
+            if (levels) database.levels = levels;
+            if (exams) database.exams = exams;
+
+            // 保存到本地
+            saveData();
+
+            // 清除URL中的sync参数（避免刷新重复同步）
+            const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+            window.history.replaceState({}, document.title, cleanUrl);
+
+            showToast('✅ 同步成功！学员' + importedStudents + '人，题目' + importedQuestions + '道，考试' + importedExams + '场', 'success');
+
+            // 更新统计信息
+            updateSyncInfo();
+
+        } catch (e) {
+            console.error('同步失败:', e);
+            showToast('同步失败: ' + e.message, 'error');
+        }
+    }
+
+    function updateSyncInfo() {
+        const infoEl = document.getElementById('syncInfoText');
+        if (infoEl) {
+            infoEl.innerHTML = '当前已同步：<strong>' + database.students.length + '</strong>名学员，<strong>' +
+                database.questions.length + '</strong>道题，<strong>' +
+                Object.keys(database.users).filter(k => database.users[k].role === 'admin').length + '</strong>个管理员';
+        }
+    }
+
+    // 切换同步码输入面板
+    function toggleSyncPanel() {
+        const panel = document.getElementById('syncPanel');
+        if (panel) {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+    }
     
     // 页面初始化
     async function initPage() {
-        // 先初始化云开发
-        await initCloudBase();
+        // 加载本地数据
+        loadData();
         initLevels();
+
+        // 检查是否通过同步链接打开
+        if (checkSyncParam()) {
+            console.log('同步码自动同步完成');
+        }
+
         // 自动填充第一个管理员账号到登录框
         const adminKeys = Object.keys(database.users).filter(k => database.users[k].role === 'admin');
         if (adminKeys.length > 0) {
@@ -5526,6 +5751,89 @@
     
     // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', initPage);
+    
+    // 生成同步二维码
+    function generateSyncQRCode(url) {
+        try {
+            const container = document.getElementById('syncQrcodeContainer');
+            if (!container) {
+                console.error('找不到二维码容器');
+                return;
+            }
+            
+            // 清空容器
+            container.innerHTML = '<div style="padding:20px;">⏳ 正在生成二维码...</div>';
+            
+            // 二维码功能暂时不可用，显示替代方案
+            container.innerHTML = `
+                <div style="text-align:center;padding:20px;">
+                    <div style="color:#e53e3e;font-size:14px;margin-bottom:10px;">⚠️ 二维码功能暂不可用</div>
+                    <div style="background:#f7fafc;border:1px dashed #cbd5e0;border-radius:8px;padding:15px;margin:10px 0;">
+                        <div style="font-size:13px;color:#4a5568;margin-bottom:8px;">请使用以下方式同步数据：</div>
+                        <div style="font-size:12px;color:#718096;line-height:1.6;">
+                            1. 复制下方同步码<br>
+                            2. 发送给学员<br>
+                            3. 学员在登录页点击"同步数据"<br>
+                            4. 粘贴同步码完成同步
+                        </div>
+                    </div>
+                    <div style="font-size:12px;color:#38b2ac;margin-top:10px;">
+                        📱 手机用户可直接点击同步链接
+                    </div>
+                </div>
+            `;
+            return;
+            
+            setTimeout(() => {
+                try {
+                    // 创建QR码实例 - 使用正确的库名
+                    var qr = QRCode(10, 'M');  // 版本10，纠错级别M
+                    qr.addData(url, 'Byte');
+                    qr.make();
+                    
+                    // 创建SVG格式的二维码
+                    const svgTag = qr.createSvgTag(4, 2, '同步数据二维码', '冉鹏工作室');
+                    
+                    // 清空容器，添加二维码
+                    container.innerHTML = svgTag;
+                    
+                    // 添加下载按钮
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.innerHTML = '📱 下载二维码';
+                    downloadBtn.style.cssText = 'margin-top:10px;padding:8px 16px;background:#38b2ac;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;';
+                    downloadBtn.onclick = function() {
+                        try {
+                            // 使用DataURL方式生成可下载的图片
+                            const dataURL = qr.createDataURL(4, 2);
+                            const link = document.createElement('a');
+                            link.download = 'sync-qrcode.png';
+                            link.href = dataURL;
+                            link.click();
+                            showToast('✅ 二维码已下载为sync-qrcode.png', 'success');
+                        } catch(e) {
+                            showToast('❌ 下载失败: ' + e.message, 'error');
+                        }
+                    };
+                    container.appendChild(downloadBtn);
+                    
+                    // 调整SVG样式
+                    const svgElement = container.querySelector('svg');
+                    if (svgElement) {
+                        // 设置深蓝色二维码
+                        svgElement.querySelectorAll('path[fill=\"#000000\"]').forEach(path => {
+                            path.setAttribute('fill', '#2c5282');
+                        });
+                        svgElement.style.cssText = 'border:1px solid #e2e8f0;border-radius:8px;display:block;margin:0 auto;';
+                    }
+                } catch (e) {
+                    console.error('二维码生成异常:', e);
+                    container.innerHTML = '<div style="color:#e53e3e;padding:10px;">❌ 二维码生成异常: ' + e.message + '</div>';
+                }
+            }, 100);
+        } catch (e) {
+            console.error('二维码生成外层异常:', e);
+        }
+    }
     
     // 通知提示
     function showToast(message, type = 'info') {

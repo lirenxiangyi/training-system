@@ -22,9 +22,9 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.9.0 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.9.1 - LOADED AT ' + new Date().toISOString());
     </script>
-    <title>冉鹏工作室培训管理系统 v2.9.0</title>
+    <title>冉鹏工作室培训管理系统 v2.9.1</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -164,7 +164,9 @@
             overflow: auto;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            gap: 24px;
+            flex-wrap: wrap;
         }
         
         /* 考试列表 */
@@ -174,7 +176,9 @@
             padding: 30px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 600px;
+            max-width: 520px;
+            flex: 1;
+            min-width: 280px;
         }
         .exam-list-title {
             font-size: 20px;
@@ -701,6 +705,24 @@
         
         /* 手机端适配 */
         @media screen and (max-width: 768px) {
+            /* 考试中心三栏 → 竖向单栏 */
+            .exam-page-content {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                padding: 15px !important;
+                gap: 15px !important;
+            }
+            .exam-list-container {
+                max-width: 100% !important;
+                min-width: unset !important;
+                padding: 20px !important;
+            }
+            .exam-page-header {
+                padding: 12px 15px !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+            
             /* 考试界面 - 隐藏右侧答题卡，改为底部浮动 */
             .exam-page-content > div[style*="display: flex"] {
                 flex-direction: column !important;
@@ -875,11 +897,11 @@
                 <div class="exam-list-title">待考试场</div>
                 <div id="studentExamList"></div>
             </div>
-            <div class="exam-list-container" style="margin-top: 24px;">
+            <div class="exam-list-container">
                 <div class="exam-list-title">我的成绩</div>
                 <div id="studentScoreList"></div>
             </div>
-            <div class="exam-list-container" style="margin-top: 24px;">
+            <div class="exam-list-container">
                 <div class="exam-list-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>我的错题集</span>
                     <span id="wrongQuestionCount" style="font-size: 14px; color: #667eea; font-weight: normal;">0题</span>

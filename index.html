@@ -824,7 +824,7 @@
 <div id="loginPage" class="login-container">
     <div class="login-card">
         <h1>冉鹏工作室</h1>
-        <p>培训管理系统 v2.5.0</p>
+        <p>培训管理系统 v2.9.2</p>
         
         <div class="login-tabs">
             <button class="login-tab active" onclick="switchLoginTab('admin', this)">管理员登陆</button>
@@ -1969,17 +1969,35 @@
             return;
         }
         
-        // 精确匹配（忽略大小写，忽略空格）
+        // 调试信息：输出当前数据库中学员列表，方便排查
+        console.log('[登录调试] 输入姓名:', name, '| 输入ID:', id);
+        console.log('[登录调试] 数据库学员列表:', JSON.stringify(database.students.map(s => ({id: s.id, name: s.name}))));
+        
+        // 精确匹配（忽略空格）
         const student = database.students.find(s => 
             s.id.trim() === id && s.name.trim() === name
         );
+        
         if (student) {
+            console.log('[登录调试] 匹配成功:', student);
             currentUser = name;
             currentRole = 'student';
             studentExamMode = true;
             enterExamPage(student);
         } else {
-            showToast('学员信息不匹配，请检查', 'error');
+            // 提示更详细：显示学员库里有什么，方便排查
+            const idMatch = database.students.find(s => s.id.trim() === id);
+            const nameMatch = database.students.find(s => s.name.trim() === name);
+            let detail = '';
+            if (!idMatch && !nameMatch) {
+                detail = '（未找到匹配的姓名和ID）';
+            } else if (idMatch && !nameMatch) {
+                detail = '（ID匹配但姓名不匹配，库中姓名：' + idMatch.name + '）';
+            } else if (!idMatch && nameMatch) {
+                detail = '（姓名匹配但ID不匹配，库中ID：' + nameMatch.id + '）';
+            }
+            console.log('[登录调试] 匹配失败', detail);
+            showToast('学员信息不匹配' + detail, 'error');
         }
     }
     

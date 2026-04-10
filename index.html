@@ -981,7 +981,10 @@
 <div id="examTestingPage" style="display:none;" class="exam-page-container">
     <div style="width: 100%;">
         <div class="exam-page-header">
-            <div class="exam-page-title" id="examTitle">考试</div>
+            <div style="flex: 1;">
+                <div class="exam-page-title" id="examTitle">考试</div>
+                <div id="examTimeInfo" style="font-size: 12px; color: #666; margin-top: 4px;"></div>
+            </div>
             <div class="exam-timer" id="examTimer">60分钟</div>
         </div>
         <div class="exam-page-content">
@@ -1346,6 +1349,7 @@
                             <th>类型</th>
                             <th>难度</th>
                             <th>答案</th>
+                            <th>图片</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -1372,6 +1376,7 @@
                             <th>题型配置</th>
                             <th>级别范围</th>
                             <th>时限</th>
+                            <th>时间控制</th>
                             <th>参加人数</th>
                             <th>状态</th>
                             <th>操作</th>
@@ -1658,6 +1663,41 @@
                 <label>选项/答案 <span style="color:#f56565; font-size:12px;">（用|分隔选项，最后一项为答案。单选/多选/填空示例：A|B|C|AB；判断题示例：是|否|是）</span></label>
                 <textarea id="questionOptionsInput" rows="4" placeholder="示例：&#10;单选题：选项A|选项B|选项C|B&#10;多选题：选项A|选项B|选项C|选项D|AC&#10;判断题：是|否|是&#10;填空题：答案1|答案2|答案3|答案1"></textarea>
             </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>图片 <span style="color:#667eea; font-size:12px;">（可选，支持在线链接、Base64或上传图片）</span></label>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- 图片预览区域 -->
+                    <div id="imagePreviewContainer" style="display: none; text-align: center; margin-bottom: 8px;">
+                        <div style="font-size: 12px; color: #667eea; margin-bottom: 4px;">图片预览</div>
+                        <img id="imagePreview" src="" alt="图片预览" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; display: none;">
+                    </div>
+                    
+                    <!-- 图片URL输入框 -->
+                    <input type="text" id="questionImageUrlInput" placeholder="https://example.com/image.png 或 data:image/png;base64,..." 
+                           style="margin-bottom: 8px;" oninput="updateImagePreview()">
+                    
+                    <!-- 文件上传按钮 -->
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="file" id="imageFileUpload" accept="image/*" style="display: none;" onchange="handleImageUpload()">
+                        <button type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" 
+                                onclick="document.getElementById('imageFileUpload').click()">
+                            📁 上传图片文件
+                        </button>
+                        <button type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" 
+                                onclick="clearImage()">
+                            ❌ 清除图片
+                        </button>
+                    </div>
+                    
+                    <!-- 操作说明 -->
+                    <div style="font-size: 11px; color: #888; line-height: 1.4;">
+                        <div>📌 支持三种方式：</div>
+                        <div>1. 粘贴图片URL（在线链接）</div>
+                        <div>2. 粘贴Base64图片数据（data:image/...）</div>
+                        <div>3. 上传本地图片文件（自动转换为Base64）</div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('addQuestionModal')">取消</button>
@@ -1719,6 +1759,26 @@
                             <option value="3">最多3次</option>
                         </select>
                     </div>
+                </div>
+            </div>
+            <div style="border-top:1px solid #e2e8f0;margin:12px 0;padding-top:12px;">
+                <label style="font-weight:bold;font-size:14px;color:#2c5282;">考试时间控制 <span style="font-size:11px;color:#718096;font-weight:normal;">（可选）</span></label>
+                <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;">
+                    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+                        <label>开始时间</label>
+                        <input type="datetime-local" id="examStartTime" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+                        <label>结束时间</label>
+                        <input type="datetime-local" id="examEndTime" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
+                    </div>
+                </div>
+                <div style="margin-top:10px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="examEnableAutoSubmit" style="width:16px;height:16px;">
+                        <span style="font-size:14px;">启用自动交卷（超时自动提交）</span>
+                    </label>
+                    <div style="font-size:11px;color:#718096;margin-top:4px;margin-left:24px;">开启后，考试时长到期时自动提交试卷</div>
                 </div>
             </div>
         </div>
@@ -1992,8 +2052,8 @@
             { studentId: 'S002', studentName: '李四', course: 'Python', normal: 88, final: 92, composite: 90 }
         ],
         questions: [
-            { id: 'Q001', content: 'JavaScript中var和let的区别是什么？', type: 'single', difficulty: 'medium', level: '初级', options: 'var可以重复声明|let不可以重复声明|var不可以重复声明|let可以重复声明|let不可以重复声明', answer: 'let不可以重复声明' },
-            { id: 'Q002', content: '下列哪些是JavaScript中的基本数据类型？', type: 'multi', difficulty: 'easy', level: '初级', options: 'String|Number|Boolean|Object|Undefined|Null|String,Number,Boolean,Undefined,Null', answer: 'String,Number,Boolean,Undefined,Null' }
+            { id: 'Q001', content: 'JavaScript中var和let的区别是什么？', type: 'single', difficulty: 'medium', level: '初级', options: 'var可以重复声明|let不可以重复声明|var不可以重复声明|let可以重复声明|let不可以重复声明', answer: 'let不可以重复声明', imageUrl: '' },
+            { id: 'Q002', content: '下列哪些是JavaScript中的基本数据类型？', type: 'multi', difficulty: 'easy', level: '初级', options: 'String|Number|Boolean|Object|Undefined|Null|String,Number,Boolean,Undefined,Null', answer: 'String,Number,Boolean,Undefined,Null', imageUrl: '' }
         ],
         levels: ['初级', '中级', '高级'],
         exams: [
@@ -2250,6 +2310,28 @@
     
     function startStudentExam(examIndex, studentId) {
         const exam = database.exams[examIndex];
+        
+        // 检查考试时间控制
+        const now = new Date();
+        
+        // 检查开始时间
+        if (exam.startTime) {
+            const startDate = new Date(exam.startTime);
+            if (startDate > now) {
+                alert(`考试未开始，开始时间：${formatTimeDisplay(exam.startTime)}`);
+                return;
+            }
+        }
+        
+        // 检查结束时间
+        if (exam.endTime) {
+            const endDate = new Date(exam.endTime);
+            if (endDate < now) {
+                alert(`考试已结束，结束时间：${formatTimeDisplay(exam.endTime)}`);
+                return;
+            }
+        }
+        
         currentExam = exam;
         currentExamIndex = examIndex;
         currentExamAnswers = {};
@@ -2297,6 +2379,25 @@
         document.getElementById('examTestingPage').style.display = 'flex';
         
         document.getElementById('examTitle').textContent = exam.name;
+        
+        // 显示考试时间信息
+        const timeInfoElement = document.getElementById('examTimeInfo');
+        const hasStartTime = exam.startTime && exam.startTime.trim();
+        const hasEndTime = exam.endTime && exam.endTime.trim();
+        
+        if (hasStartTime || hasEndTime) {
+            let timeInfo = '';
+            if (hasStartTime) {
+                timeInfo += `开始：${formatTimeDisplay(exam.startTime)}`;
+            }
+            if (hasEndTime) {
+                if (timeInfo) timeInfo += ' | ';
+                timeInfo += `结束：${formatTimeDisplay(exam.endTime)}`;
+            }
+            timeInfoElement.textContent = timeInfo;
+        } else {
+            timeInfoElement.textContent = '无时间限制';
+        }
         
         // 初始化题目索引
         currentQuestionIndex = 0;
@@ -2368,12 +2469,21 @@
         }[question.type] || '#667eea';
         
         const questionContainer = document.getElementById('questionContent');
+        
+        // 图片显示逻辑
+        const imageHtml = question.imageUrl ? 
+            `<div style="margin:15px 0 25px 0;max-width:400px;max-height:300px;overflow:hidden;border:1px solid #ddd;border-radius:8px;padding:10px;background:#f9f9f9;">
+                <img src="${question.imageUrl}" style="width:100%;height:auto;display:block;border-radius:4px;" alt="题目图片" />
+                <div style="text-align:center;font-size:12px;color:#666;margin-top:5px;">题目附图</div>
+            </div>` : '';
+        
         questionContainer.innerHTML = `
             ${typeHeaderHtml}
             <div class="question-text">
                 <span style="background:${typeColor};color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;margin-right:10px;">${typeName}</span>
                 <strong>第${currentQuestionIndex + 1}题：</strong>${question.content}
             </div>
+            ${imageHtml}
             <div class="question-options" id="optionsContainer"></div>
         `;
         
@@ -3664,6 +3774,13 @@
                 answerDisplay = `<span style="color:#667eea;font-weight:bold;">${letters.join('') || '-'}</span>`;
             }
 
+            // 图片显示
+            const imageHtml = q.imageUrl ? 
+                `<div style="max-width:100px;max-height:80px;overflow:hidden;border:1px solid #ddd;border-radius:4px;">
+                    <img src="${q.imageUrl}" style="width:100%;height:auto;display:block;" alt="题目图片" />
+                </div>` : 
+                `<span style="color:#999;font-size:12px;">无图片</span>`;
+
             return `
             <tr>
                 <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
@@ -3672,6 +3789,7 @@
                 <td>${getTypeName(q.type)}</td>
                 <td>${getDifficultyName(q.difficulty)}</td>
                 <td>${answerDisplay}</td>
+                <td>${imageHtml}</td>
                 <td>
                     <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteQuestion('${q.id}')">删除</button>
@@ -3713,6 +3831,13 @@
                 answerDisplay = `<span style="color:#667eea;font-weight:bold;">${letters.join('') || '-'}</span>`;
             }
 
+            // 图片显示
+            const imageHtml = q.imageUrl ? 
+                `<div style="max-width:100px;max-height:80px;overflow:hidden;border:1px solid #ddd;border-radius:4px;">
+                    <img src="${q.imageUrl}" style="width:100%;height:auto;display:block;" alt="题目图片" />
+                </div>` : 
+                `<span style="color:#999;font-size:12px;">无图片</span>`;
+
             return `
             <tr>
                 <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
@@ -3721,6 +3846,7 @@
                 <td>${getTypeName(q.type)}</td>
                 <td>${getDifficultyName(q.difficulty)}</td>
                 <td>${answerDisplay}</td>
+                <td>${imageHtml}</td>
                 <td>
                     <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteQuestion('${q.id}')">删除</button>
@@ -3797,6 +3923,18 @@
         document.getElementById('questionTypeSelect').value = 'single';
         document.getElementById('questionDifficultySelect').value = 'easy';
         document.getElementById('questionLevelSelect').value = database.levels[0] || '初级';
+        document.getElementById('questionImageUrlInput').value = '';
+        
+        // 清除图片预览
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+        const fileInput = document.getElementById('imageFileUpload');
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (previewImage) {
+            previewImage.style.display = 'none';
+            previewImage.src = '';
+        }
+        if (fileInput) fileInput.value = '';
         
         // 确保设置正确的标题和按钮
         const modal = document.getElementById('addQuestionModal');
@@ -3824,12 +3962,29 @@
         const typeInput = document.getElementById('questionTypeSelect');
         const difficultyInput = document.getElementById('questionDifficultySelect');
         const levelInput = document.getElementById('questionLevelSelect');
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
         
         contentInput.value = question.content || '';
         optionsInput.value = question.options || '';
         typeInput.value = question.type || 'single';
         difficultyInput.value = question.difficulty || 'easy';
         levelInput.value = question.level || database.levels[0] || '初级';
+        imageUrlInput.value = question.imageUrl || '';
+        
+        // 更新图片预览
+        if (question.imageUrl) {
+            updateImagePreview();
+        } else {
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            const previewImage = document.getElementById('imagePreview');
+            const fileInput = document.getElementById('imageFileUpload');
+            if (previewContainer) previewContainer.style.display = 'none';
+            if (previewImage) {
+                previewImage.style.display = 'none';
+                previewImage.src = '';
+            }
+            if (fileInput) fileInput.value = '';
+        }
         
         const modal = document.getElementById('addQuestionModal');
         const header = modal.querySelector('.modal-header');
@@ -3841,18 +3996,91 @@
         modal.classList.add('active');
     }
     
+    // 图片处理相关函数
+    function updateImagePreview() {
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+        const value = imageUrlInput.value;
+        
+        if (value && (value.startsWith('http') || value.startsWith('data:image/'))) {
+            previewContainer.style.display = 'block';
+            previewImage.src = value;
+            previewImage.style.display = 'block';
+        } else {
+            previewContainer.style.display = 'none';
+            previewImage.style.display = 'none';
+            previewImage.src = '';
+        }
+    }
+    
+    function handleImageUpload() {
+        const fileInput = document.getElementById('imageFileUpload');
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+        
+        if (fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            
+            // 检查文件类型
+            if (!file.type.startsWith('image/')) {
+                showToast('❌ 请选择图片文件', 'error');
+                return;
+            }
+            
+            // 检查文件大小（限制5MB）
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('❌ 图片文件太大（最大5MB）', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // 转换为Base64
+                const base64Data = e.target.result;
+                imageUrlInput.value = base64Data;
+                
+                // 显示预览
+                previewContainer.style.display = 'block';
+                previewImage.src = base64Data;
+                previewImage.style.display = 'block';
+                
+                showToast('✅ 图片上传成功', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+    
+    function clearImage() {
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+        const fileInput = document.getElementById('imageFileUpload');
+        
+        imageUrlInput.value = '';
+        previewContainer.style.display = 'none';
+        previewImage.style.display = 'none';
+        previewImage.src = '';
+        fileInput.value = '';
+        
+        showToast('✅ 图片已清除', 'success');
+    }
+    
     function saveQuestion() {
         const contentInput = document.getElementById('questionContentInput');
         const optionsInput = document.getElementById('questionOptionsInput');
         const typeInput = document.getElementById('questionTypeSelect');
         const difficultyInput = document.getElementById('questionDifficultySelect');
         const levelInput = document.getElementById('questionLevelSelect');
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
         
         const content = contentInput.value.trim();
         const type = typeInput.value;
         const difficulty = difficultyInput.value;
         const level = levelInput.value || database.levels[0] || '初级';
         const options = optionsInput.value.trim();
+        const imageUrl = imageUrlInput.value.trim();
         
         if (!content) {
             showToast('❌ 请填写题目内容', 'error');
@@ -3887,6 +4115,7 @@
                 question.level = level;
                 question.options = optionsStr;
                 question.answer = answer;
+                question.imageUrl = imageUrl;
                 saveData();
                 showToast('✅ 题目更新成功', 'success');
             } else {
@@ -3901,7 +4130,8 @@
                 difficulty: difficulty,
                 level: level,
                 options: optionsStr,
-                answer: answer
+                answer: answer,
+                imageUrl: imageUrl  // 使用输入的值
             };
             database.questions.push(newQuestion);
             saveData();
@@ -4068,7 +4298,7 @@
                         
                         // 智能识别格式
                         if (fields.length >= 9) {
-                            // 新格式（分列选项）：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案
+                            // 新格式（分列选项）：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案,图片URL
                             id = 'Q' + String(database.questions.length + 1).padStart(3, '0');
                             qContent = fields[1] ? fields[1].trim() : '';
                             qType = fields[2] ? fields[2].trim() : 'single';
@@ -4096,6 +4326,9 @@
                             }
                             
                             qOptions = opts.join('|');
+                            
+                            // 图片URL（第10列）
+                            const imageUrl = fields[9] ? fields[9].trim() : '';
                             
                             // 转换答案：字母 -> 选项内容
                             const answerField = fields[8] ? fields[8].trim() : '';
@@ -4206,7 +4439,8 @@
                             difficulty: 'medium', // 默认难度
                             level: qLevel,
                             options: qOptions,
-                            answer: qAnswer
+                            answer: qAnswer,
+                            imageUrl: imageUrl || ''
                         });
                         importCount++;
                     } catch (lineErr) {
@@ -4306,11 +4540,15 @@
             };
             const typeLabel = typeLabels[e.type || 'formal'] || typeLabels['formal'];
 
+            // 构建时间控制信息
+            const timeControlInfo = getTimeControlInfo(e);
+
             return `<tr>
                 <td>${e.name} ${typeLabel}</td>
                 <td>${typeDesc}</td>
                 <td>${(e.levels || []).length > 0 ? (e.levels || []).join('、') : '全部'}</td>
                 <td>${e.timeLimit === 0 ? '无限制' : e.timeLimit + '分钟'}</td>
+                <td>${timeControlInfo}</td>
                 <td>${e.participants || 0}</td>
                 <td><span style="color: #48bb78;">${e.status === 'active' ? '活跃' : '已结束'}</span></td>
                 <td>
@@ -4319,6 +4557,51 @@
                 </td>
             </tr>`;
         }).join('');
+    }
+
+    // 获取时间控制信息
+    function getTimeControlInfo(exam) {
+        const hasStartTime = exam.startTime && exam.startTime.trim();
+        const hasEndTime = exam.endTime && exam.endTime.trim();
+        
+        if (!hasStartTime && !hasEndTime && !exam.enableAutoSubmit) {
+            return '<span style="color:#666;font-size:12px;">无时间控制</span>';
+        }
+        
+        let infoParts = [];
+        
+        if (hasStartTime) {
+            const startTimeStr = formatTimeDisplay(exam.startTime);
+            infoParts.push(`开始：${startTimeStr}`);
+        }
+        
+        if (hasEndTime) {
+            const endTimeStr = formatTimeDisplay(exam.endTime);
+            infoParts.push(`结束：${endTimeStr}`);
+        }
+        
+        if (exam.enableAutoSubmit) {
+            infoParts.push('<span style="color:#4caf50;font-weight:bold;">自动交卷</span>');
+        }
+        
+        return infoParts.join('<br>');
+    }
+
+    // 格式化时间显示
+    function formatTimeDisplay(timeStr) {
+        if (!timeStr || !timeStr.trim()) return '';
+        try {
+            const date = new Date(timeStr);
+            if (isNaN(date.getTime())) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}/${month}/${day} ${hours}:${minutes}`;
+        } catch (e) {
+            return '';
+        }
     }
     
     let editingExamId = null;
@@ -4331,6 +4614,9 @@
         document.getElementById('examTime').value = '60';
         document.getElementById('examPassScore').value = '60';
         document.getElementById('examMaxAttempts').value = '1';
+        document.getElementById('examStartTime').value = '';
+        document.getElementById('examEndTime').value = '';
+        document.getElementById('examEnableAutoSubmit').checked = false;
         toggleExamTypeFields();  // 更新字段显示状态
         refreshExamLevelChecks();
         buildExamTypeCountUI();
@@ -4348,6 +4634,20 @@
         document.getElementById('examTime').value = exam.timeLimit;
         document.getElementById('examPassScore').value = exam.passScore || 60;
         document.getElementById('examMaxAttempts').value = exam.maxAttempts || 1;
+        
+        // 回填新增的时间控制字段
+        if (exam.startTime) {
+            document.getElementById('examStartTime').value = formatDateForInput(exam.startTime);
+        } else {
+            document.getElementById('examStartTime').value = '';
+        }
+        if (exam.endTime) {
+            document.getElementById('examEndTime').value = formatDateForInput(exam.endTime);
+        } else {
+            document.getElementById('examEndTime').value = '';
+        }
+        document.getElementById('examEnableAutoSubmit').checked = !!exam.enableAutoSubmit;
+        
         toggleExamTypeFields();  // 更新字段显示状态
         refreshExamLevelChecks();
         // 勾选当前级别
@@ -4372,6 +4672,23 @@
         });
         updateExamTypeSummary();
         document.getElementById('addExamModal').classList.add('active');
+    }
+
+    // 格式化日期为datetime-local输入框所需的格式 (YYYY-MM-DDTHH:mm)
+    function formatDateForInput(dateStr) {
+        if (!dateStr) return '';
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        } catch (e) {
+            return '';
+        }
     }
 
     // 根据考试类型切换字段显示
@@ -4417,6 +4734,9 @@
         const score = document.getElementById('examPassScore').value;
         const maxAttempts = document.getElementById('examMaxAttempts').value;
         const typeCounts = getExamTypeCounts();
+        const startTime = document.getElementById('examStartTime').value;
+        const endTime = document.getElementById('examEndTime').value;
+        const enableAutoSubmit = document.getElementById('examEnableAutoSubmit').checked;
 
         // 获取选中的级别
         const selectedLevels = getSelectedExamLevels();
@@ -4451,6 +4771,10 @@
                 exam.maxAttempts = type === 'formal' ? parseInt(maxAttempts) : 999;  // 模拟考试和练习不限次数
                 exam.levels = selectedLevels;
                 exam.typeCounts = typeCounts;
+                // 时间控制字段
+                exam.startTime = startTime || null;
+                exam.endTime = endTime || null;
+                exam.enableAutoSubmit = enableAutoSubmit;
                 // 配置变更，清空已生成的题目以便下次重新生成
                 exam.questions = [];
             }
@@ -4462,15 +4786,18 @@
                 name: name,
                 type: type,  // 保存考试类型
                 questionCount: totalCount,
-                timeLimit: parseInt(time),
+                timeLimit: parseInt(time),  // 考试总时长（分钟）
                 participants: 0,
                 status: 'active',
-                passScore: parseInt(score),
+                passScore: parseInt(score),  // 及格分数线
                 maxAttempts: type === 'formal' ? parseInt(maxAttempts) : 999,  // 模拟考试和练习不限次数
                 levels: selectedLevels,
                 typeCounts: typeCounts,
                 questions: [],
-                showAnswer: type !== 'formal'  // 模拟考试和练习考后显示答案
+                showAnswer: type !== 'formal',  // 模拟考试和练习考后显示答案
+                startTime: startTime || null,  // 考试开始时间
+                endTime: endTime || null,   // 考试结束时间
+                enableAutoSubmit: enableAutoSubmit  // 是否启用自动交卷
             });
             showToast('考试创建成功', 'success');
         }

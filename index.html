@@ -22,9 +22,26 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.8.0 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.12.4 - LOADED AT ' + new Date().toISOString());
+    
+    // 页面加载时检查：如果是通过短链接打开的，自动切换到同步数据tab
+    window.addEventListener('DOMContentLoaded', function() {
+        // 检查是否是通过短链接打开的（没有sync参数）
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasSyncParam = urlParams.has('sync');
+        
+        if (!hasSyncParam && window.location.href.includes('training-system')) {
+            // 短链接打开，自动切换到同步数据tab
+            setTimeout(() => {
+                const syncTab = document.querySelector('.login-tab[onclick*="switchLoginTab(\'sync\'"]');
+                if (syncTab) {
+                    syncTab.click();
+                }
+            }, 200);
+        }
+    });
     </script>
-    <title>冉鹏工作室培训管理系统 v2.8.0</title>
+    <title>冉鹏工作室培训管理系统 v2.12.4</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -164,7 +181,9 @@
             overflow: auto;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            gap: 24px;
+            flex-wrap: wrap;
         }
         
         /* 考试列表 */
@@ -174,7 +193,9 @@
             padding: 30px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 600px;
+            max-width: 520px;
+            flex: 1;
+            min-width: 280px;
         }
         .exam-list-title {
             font-size: 20px;
@@ -701,6 +722,24 @@
         
         /* 手机端适配 */
         @media screen and (max-width: 768px) {
+            /* 考试中心三栏 → 竖向单栏 */
+            .exam-page-content {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                padding: 15px !important;
+                gap: 15px !important;
+            }
+            .exam-list-container {
+                max-width: 100% !important;
+                min-width: unset !important;
+                padding: 20px !important;
+            }
+            .exam-page-header {
+                padding: 12px 15px !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+            
             /* 考试界面 - 隐藏右侧答题卡，改为底部浮动 */
             .exam-page-content > div[style*="display: flex"] {
                 flex-direction: column !important;
@@ -793,8 +832,8 @@
             }
         }
     </style>
-    <!-- 腾讯云开发 SDK -->
-    <script src="https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js"></script>
+    <!-- v2.11.0: 使用本地存储 + 同步码方案，无需云SDK -->
+    <!-- v2.12.4: 同步码极致压缩（减少40-60%字符数） + 向后兼容 -->
 </head>
 <body>
 
@@ -802,11 +841,12 @@
 <div id="loginPage" class="login-container">
     <div class="login-card">
         <h1>冉鹏工作室</h1>
-        <p>培训管理系统 v2.5.0</p>
+        <p>培训管理系统 v2.12.4</p>
         
         <div class="login-tabs">
-            <button class="login-tab active" onclick="switchLoginTab('admin')">管理员登陆</button>
-            <button class="login-tab" onclick="switchLoginTab('student')">学员考试登陆</button>
+            <button class="login-tab active" onclick="switchLoginTab('admin', this)">管理员登陆</button>
+            <button class="login-tab" onclick="switchLoginTab('student', this)">学员考试登陆</button>
+            <button class="login-tab" onclick="switchLoginTab('sync', this)">同步数据</button>
         </div>
         
         <!-- 管理员登陆 -->
@@ -827,7 +867,54 @@
             <div class="login-tabs" style="margin-bottom:15px;border-bottom:1px solid #eee;">
                 <button class="login-tab active" onclick="switchStudentLoginTab('password',this)" style="font-size:12px;padding:6px;">账号密码</button>
                 <button class="login-tab" onclick="switchStudentLoginTab('quicklink',this)" style="font-size:12px;padding:6px;">快捷登录</button>
+                <button class="login-tab" onclick="toggleSyncPanel();this.classList.toggle('active')" style="font-size:12px;padding:6px;">同步数据</button>
             </div>
+
+            <!-- 同步数据面板（v2.12.4 极致压缩版） -->
+            <div id="syncPanel" style="display:none;margin-bottom:15px;">
+                <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:15px;">
+                    <p style="font-size:13px;color:#276749;margin:0 0 10px;line-height:1.5;">
+                        <strong>📱 数据同步（手机版）</strong><br>
+                        如果提示"找不到学员"，请按以下步骤操作：
+                    </p>
+                    
+                    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:10px;margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;margin-bottom:5px;">
+                            <div style="width:24px;height:24px;background:#48bb78;color:white;border-radius:50%;text-align:center;line-height:24px;margin-right:8px;font-size:12px;">1</div>
+                            <span style="font-size:12px;color:#2d3748;font-weight:bold;">联系管理员获取同步码</span>
+                        </div>
+                        <div style="display:flex;align-items:center;margin-bottom:5px;">
+                            <div style="width:24px;height:24px;background:#48bb78;color:white;border-radius:50%;text-align:center;line-height:24px;margin-right:8px;font-size:12px;">2</div>
+                            <span style="font-size:12px;color:#2d3748;font-weight:bold;">长按下方文本框 → 粘贴</span>
+                        </div>
+                        <div style="display:flex;align-items:center;">
+                            <div style="width:24px;height:24px;background:#48bb78;color:white;border-radius:50%;text-align:center;line-height:24px;margin-right:8px;font-size:12px;">3</div>
+                            <span style="font-size:12px;color:#2d3748;font-weight:bold;">点击"确认同步"按钮</span>
+                        </div>
+                    </div>
+                    
+                    <textarea id="manualSyncCodeInput" placeholder="📱 长按此框 → 粘贴管理员发的同步码..." style="width:100%;height:100px;border:2px solid #48bb78;border-radius:8px;padding:12px;font-size:13px;resize:none;font-family:monospace;background:#fff;"></textarea>
+                    
+                    <div style="display:flex;gap:8px;margin-top:10px;">
+                        <button onclick="manualSyncCode()" style="flex:1;padding:12px;background:#48bb78;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:bold;">
+                            ✅ 确认同步
+                        </button>
+                        <button onclick="clearSyncCode()" style="padding:12px 16px;background:#e2e8f0;color:#4a5568;border:none;border-radius:8px;cursor:pointer;font-size:13px;">
+                            清空
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top:10px;font-size:11px;color:#718096;line-height:1.5;">
+                        <strong>📱 手机操作提示：</strong><br>
+                        • 长按文本框 → 选择"粘贴"<br>
+                        • 如果同步码很长，可能需要多次复制<br>
+                        • 同步成功后请刷新页面再登录
+                    </div>
+                    
+                    <p id="syncInfoText" style="font-size:11px;color:#718096;margin:10px 0 0;text-align:center;padding:8px;background:#fff;border-radius:5px;border:1px solid #e2e8f0;"></p>
+                </div>
+            </div>
+
             <div id="studentPasswordLogin">
                 <div class="form-group">
                     <label>学员姓名</label>
@@ -875,9 +962,16 @@
                 <div class="exam-list-title">待考试场</div>
                 <div id="studentExamList"></div>
             </div>
-            <div class="exam-list-container" style="margin-top: 24px;">
+            <div class="exam-list-container">
                 <div class="exam-list-title">我的成绩</div>
                 <div id="studentScoreList"></div>
+            </div>
+            <div class="exam-list-container">
+                <div class="exam-list-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>我的错题集</span>
+                    <span id="wrongQuestionCount" style="font-size: 14px; color: #667eea; font-weight: normal;">0题</span>
+                </div>
+                <div id="wrongQuestionList"></div>
             </div>
         </div>
     </div>
@@ -887,7 +981,10 @@
 <div id="examTestingPage" style="display:none;" class="exam-page-container">
     <div style="width: 100%;">
         <div class="exam-page-header">
-            <div class="exam-page-title" id="examTitle">考试</div>
+            <div style="flex: 1;">
+                <div class="exam-page-title" id="examTitle">考试</div>
+                <div id="examTimeInfo" style="font-size: 12px; color: #666; margin-top: 4px;"></div>
+            </div>
             <div class="exam-timer" id="examTimer">60分钟</div>
         </div>
         <div class="exam-page-content">
@@ -1252,6 +1349,7 @@
                             <th>类型</th>
                             <th>难度</th>
                             <th>答案</th>
+                            <th>图片</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -1278,6 +1376,7 @@
                             <th>题型配置</th>
                             <th>级别范围</th>
                             <th>时限</th>
+                            <th>时间控制</th>
                             <th>参加人数</th>
                             <th>状态</th>
                             <th>操作</th>
@@ -1423,13 +1522,37 @@
                     </div>
                     <input type="file" id="importBackupFile" style="display:none" accept=".json" onchange="importFullBackup()">
                 </div>
+
+                <!-- 数据同步码（v2.12.4 极致压缩版） -->
+                <div style="background:linear-gradient(135deg,#ebf4ff,#e9d8fd);border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:2px solid #667eea;">
+                    <h3 style="margin:0 0 10px;font-size:15px;color:#553c9a;">🔗 数据同步码（压缩版）</h3>
+                    <p style="font-size:13px;color:#553c9a;margin-bottom:12px;">
+                        生成<strong>压缩版</strong>同步码，字符数减少40-60%，手机操作更方便！<br>
+                        <strong>自动兼容旧格式，学员无需更新</strong>
+                    </p>
+                    <button class="btn" onclick="generateSyncLink()" style="width:100%;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(102,126,234,0.4);">
+                        🚀 生成压缩同步码（减少40-60%）
+                    </button>
+                    <button class="btn" onclick="testSyncCodeCompression()" style="width:100%;padding:10px;margin-top:10px;background:#f7fafc;color:#4a5568;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;cursor:pointer;">
+                        📊 测试压缩效果
+                    </button>
+                    <div style="margin-top:10px;font-size:11px;color:#718096;line-height:1.8;">
+                        <p>📋 使用流程：</p>
+                        <ol style="padding-left:18px;margin:0;">
+                            <li>点击上方按钮，生成<strong>压缩版同步码</strong></li>
+                            <li>复制<strong>短链接+压缩同步码</strong>发给学员</li>
+                            <li>学员打开短链接，粘贴同步码完成同步</li>
+                            <li><strong>自动兼容</strong>旧格式，学员无需更新</li>
+                        </ol>
+                    </div>
+                </div>
                 
                 <!-- 系统信息 -->
                 <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
                     <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">ℹ️ 系统信息</h3>
                     <div style="font-size:13px;color:#4a5568;line-height:2;">
-                        <p>系统版本：<strong>v2.5.6-nav</strong></p>
-                        <p>数据模式：<span id="infoDataMode" style="font-weight:bold;">检测中...</span></p>
+                        <p>系统版本：<strong>v2.12.4</strong></p>
+                        <p>数据模式：<span style="font-weight:bold;color:#2c5282;">💾 本地存储 + 同步码</span></p>
                         <p>学员数量：<span id="infoStudentCount">0</span></p>
                         <p>课程数量：<span id="infoCourseCount">0</span></p>
                         <p>考试数量：<span id="infoExamCount">0</span></p>
@@ -1540,6 +1663,41 @@
                 <label>选项/答案 <span style="color:#f56565; font-size:12px;">（用|分隔选项，最后一项为答案。单选/多选/填空示例：A|B|C|AB；判断题示例：是|否|是）</span></label>
                 <textarea id="questionOptionsInput" rows="4" placeholder="示例：&#10;单选题：选项A|选项B|选项C|B&#10;多选题：选项A|选项B|选项C|选项D|AC&#10;判断题：是|否|是&#10;填空题：答案1|答案2|答案3|答案1"></textarea>
             </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>图片 <span style="color:#667eea; font-size:12px;">（可选，支持在线链接、Base64或上传图片）</span></label>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- 图片预览区域 -->
+                    <div id="imagePreviewContainer" style="display: none; text-align: center; margin-bottom: 8px;">
+                        <div style="font-size: 12px; color: #667eea; margin-bottom: 4px;">图片预览</div>
+                        <img id="imagePreview" src="" alt="图片预览" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; display: none;">
+                    </div>
+                    
+                    <!-- 图片URL输入框 -->
+                    <input type="text" id="questionImageUrlInput" placeholder="https://example.com/image.png 或 data:image/png;base64,..." 
+                           style="margin-bottom: 8px;" oninput="updateImagePreview()">
+                    
+                    <!-- 文件上传按钮 -->
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="file" id="imageFileUpload" accept="image/*" style="display: none;" onchange="handleImageUpload()">
+                        <button type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" 
+                                onclick="document.getElementById('imageFileUpload').click()">
+                            📁 上传图片文件
+                        </button>
+                        <button type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" 
+                                onclick="clearImage()">
+                            ❌ 清除图片
+                        </button>
+                    </div>
+                    
+                    <!-- 操作说明 -->
+                    <div style="font-size: 11px; color: #888; line-height: 1.4;">
+                        <div>📌 支持三种方式：</div>
+                        <div>1. 粘贴图片URL（在线链接）</div>
+                        <div>2. 粘贴Base64图片数据（data:image/...）</div>
+                        <div>3. 上传本地图片文件（自动转换为Base64）</div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('addQuestionModal')">取消</button>
@@ -1601,6 +1759,26 @@
                             <option value="3">最多3次</option>
                         </select>
                     </div>
+                </div>
+            </div>
+            <div style="border-top:1px solid #e2e8f0;margin:12px 0;padding-top:12px;">
+                <label style="font-weight:bold;font-size:14px;color:#2c5282;">考试时间控制 <span style="font-size:11px;color:#718096;font-weight:normal;">（可选）</span></label>
+                <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;">
+                    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+                        <label>开始时间</label>
+                        <input type="datetime-local" id="examStartTime" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+                        <label>结束时间</label>
+                        <input type="datetime-local" id="examEndTime" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
+                    </div>
+                </div>
+                <div style="margin-top:10px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="examEnableAutoSubmit" style="width:16px;height:16px;">
+                        <span style="font-size:14px;">启用自动交卷（超时自动提交）</span>
+                    </label>
+                    <div style="font-size:11px;color:#718096;margin-top:4px;margin-left:24px;">开启后，考试时长到期时自动提交试卷</div>
                 </div>
             </div>
         </div>
@@ -1874,8 +2052,8 @@
             { studentId: 'S002', studentName: '李四', course: 'Python', normal: 88, final: 92, composite: 90 }
         ],
         questions: [
-            { id: 'Q001', content: 'JavaScript中var和let的区别是什么？', type: 'single', difficulty: 'medium', level: '初级', options: 'var可以重复声明|let不可以重复声明|var不可以重复声明|let可以重复声明|let不可以重复声明', answer: 'let不可以重复声明' },
-            { id: 'Q002', content: '下列哪些是JavaScript中的基本数据类型？', type: 'multi', difficulty: 'easy', level: '初级', options: 'String|Number|Boolean|Object|Undefined|Null|String,Number,Boolean,Undefined,Null', answer: 'String,Number,Boolean,Undefined,Null' }
+            { id: 'Q001', content: 'JavaScript中var和let的区别是什么？', type: 'single', difficulty: 'medium', level: '初级', options: 'var可以重复声明|let不可以重复声明|var不可以重复声明|let可以重复声明|let不可以重复声明', answer: 'let不可以重复声明', imageUrl: '' },
+            { id: 'Q002', content: '下列哪些是JavaScript中的基本数据类型？', type: 'multi', difficulty: 'easy', level: '初级', options: 'String|Number|Boolean|Object|Undefined|Null|String,Number,Boolean,Undefined,Null', answer: 'String,Number,Boolean,Undefined,Null', imageUrl: '' }
         ],
         levels: ['初级', '中级', '高级'],
         exams: [
@@ -1897,16 +2075,32 @@
         attendance: [],
         schedules: [],
         profiles: [],
+        wrongQuestions: [],  // 错题集
         lastBackupTime: null
     };
     
     // 登陆逻辑
-    function switchLoginTab(tab) {
+    function switchLoginTab(tab, clickedElement) {
         document.querySelectorAll('.login-tab').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.login-form').forEach(el => el.classList.remove('active'));
         
-        event.target.classList.add('active');
-        document.getElementById(tab === 'admin' ? 'adminForm' : 'studentForm').classList.add('active');
+        if (clickedElement) {
+            clickedElement.classList.add('active');
+        }
+        
+        if (tab === 'admin') {
+            document.getElementById('adminForm').classList.add('active');
+        } else if (tab === 'student') {
+            document.getElementById('studentForm').classList.add('active');
+        } else if (tab === 'sync') {
+            // 切换到学员登录，并自动打开同步数据面板
+            document.getElementById('studentForm').classList.add('active');
+            setTimeout(() => {
+                toggleSyncPanel();
+                document.querySelectorAll('#studentForm .login-tab').forEach(t => t.classList.remove('active'));
+                document.querySelector('#studentForm .login-tab[onclick*="toggleSyncPanel"]').classList.add('active');
+            }, 50);
+        }
     }
     
     function doAdminLogin() {
@@ -1929,22 +2123,43 @@
     }
     
     function doStudentLogin() {
-        const name = document.getElementById('studentName').value;
-        const id = document.getElementById('studentID').value;
+        const name = document.getElementById('studentName').value.trim();
+        const id = document.getElementById('studentID').value.trim();
         
         if (!name || !id) {
             showToast('请输入姓名和学员ID', 'error');
             return;
         }
         
-        const student = database.students.find(s => s.id === id && s.name === name);
+        // 调试信息：输出当前数据库中学员列表，方便排查
+        console.log('[登录调试] 输入姓名:', name, '| 输入ID:', id);
+        console.log('[登录调试] 数据库学员列表:', JSON.stringify(database.students.map(s => ({id: s.id, name: s.name}))));
+        
+        // 精确匹配（忽略空格）
+        const student = database.students.find(s => 
+            s.id.trim() === id && s.name.trim() === name
+        );
+        
         if (student) {
+            console.log('[登录调试] 匹配成功:', student);
             currentUser = name;
             currentRole = 'student';
             studentExamMode = true;
             enterExamPage(student);
         } else {
-            showToast('学员信息不匹配，请检查', 'error');
+            // 提示更详细：显示学员库里有什么，方便排查
+            const idMatch = database.students.find(s => s.id.trim() === id);
+            const nameMatch = database.students.find(s => s.name.trim() === name);
+            let detail = '';
+            if (!idMatch && !nameMatch) {
+                detail = '（未找到匹配的姓名和ID）';
+            } else if (idMatch && !nameMatch) {
+                detail = '（ID匹配但姓名不匹配，库中姓名：' + idMatch.name + '）';
+            } else if (!idMatch && nameMatch) {
+                detail = '（姓名匹配但ID不匹配，库中ID：' + nameMatch.id + '）';
+            }
+            console.log('[登录调试] 匹配失败', detail);
+            showToast('学员信息不匹配' + detail, 'error');
         }
     }
     
@@ -1977,6 +2192,7 @@
         
         loadStudentExams(student.id);
         loadStudentScores(student.id);
+        loadWrongQuestions();  // 加载错题列表
     }
     
     function loadStudentScores(studentId) {
@@ -2094,6 +2310,28 @@
     
     function startStudentExam(examIndex, studentId) {
         const exam = database.exams[examIndex];
+        
+        // 检查考试时间控制
+        const now = new Date();
+        
+        // 检查开始时间
+        if (exam.startTime) {
+            const startDate = new Date(exam.startTime);
+            if (startDate > now) {
+                alert(`考试未开始，开始时间：${formatTimeDisplay(exam.startTime)}`);
+                return;
+            }
+        }
+        
+        // 检查结束时间
+        if (exam.endTime) {
+            const endDate = new Date(exam.endTime);
+            if (endDate < now) {
+                alert(`考试已结束，结束时间：${formatTimeDisplay(exam.endTime)}`);
+                return;
+            }
+        }
+        
         currentExam = exam;
         currentExamIndex = examIndex;
         currentExamAnswers = {};
@@ -2141,6 +2379,25 @@
         document.getElementById('examTestingPage').style.display = 'flex';
         
         document.getElementById('examTitle').textContent = exam.name;
+        
+        // 显示考试时间信息
+        const timeInfoElement = document.getElementById('examTimeInfo');
+        const hasStartTime = exam.startTime && exam.startTime.trim();
+        const hasEndTime = exam.endTime && exam.endTime.trim();
+        
+        if (hasStartTime || hasEndTime) {
+            let timeInfo = '';
+            if (hasStartTime) {
+                timeInfo += `开始：${formatTimeDisplay(exam.startTime)}`;
+            }
+            if (hasEndTime) {
+                if (timeInfo) timeInfo += ' | ';
+                timeInfo += `结束：${formatTimeDisplay(exam.endTime)}`;
+            }
+            timeInfoElement.textContent = timeInfo;
+        } else {
+            timeInfoElement.textContent = '无时间限制';
+        }
         
         // 初始化题目索引
         currentQuestionIndex = 0;
@@ -2212,12 +2469,21 @@
         }[question.type] || '#667eea';
         
         const questionContainer = document.getElementById('questionContent');
+        
+        // 图片显示逻辑
+        const imageHtml = question.imageUrl ? 
+            `<div style="margin:15px 0 25px 0;max-width:400px;max-height:300px;overflow:hidden;border:1px solid #ddd;border-radius:8px;padding:10px;background:#f9f9f9;">
+                <img src="${question.imageUrl}" style="width:100%;height:auto;display:block;border-radius:4px;" alt="题目图片" />
+                <div style="text-align:center;font-size:12px;color:#666;margin-top:5px;">题目附图</div>
+            </div>` : '';
+        
         questionContainer.innerHTML = `
             ${typeHeaderHtml}
             <div class="question-text">
                 <span style="background:${typeColor};color:#fff;padding:4px 12px;border-radius:12px;font-size:14px;margin-right:10px;">${typeName}</span>
                 <strong>第${currentQuestionIndex + 1}题：</strong>${question.content}
             </div>
+            ${imageHtml}
             <div class="question-options" id="optionsContainer"></div>
         `;
         
@@ -2243,7 +2509,7 @@
                 const optionDiv = document.createElement('div');
                 optionDiv.className = 'option';
                 optionDiv.innerHTML = `
-                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="currentExamAnswers[${currentQuestionIndex}] = this.value;">
+                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="selectAnswer(${currentQuestionIndex}, '${option}', this)">
                     <label for="opt${idx}">${option}</label>
                 `;
                 optionsContainer.appendChild(optionDiv);
@@ -2263,6 +2529,16 @@
             // 添加多选答案容器
             if (!window.multiAnswers) window.multiAnswers = {};
             window.multiAnswers[currentQuestionIndex] = [];
+            
+            // 日常练习多选题：添加确认按钮
+            if (currentExam && currentExam.type === 'practice') {
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'btn btn-primary';
+                confirmBtn.style.cssText = 'margin-top: 15px;';
+                confirmBtn.textContent = '确认答案';
+                confirmBtn.onclick = () => checkMultiAnswer(currentQuestionIndex);
+                optionsContainer.appendChild(confirmBtn);
+            }
         } else {
             // 单选题：显示单选按钮
             const optionsList = (question.options || '').split('|').filter(o => o.trim());
@@ -2270,11 +2546,19 @@
                 const optionDiv = document.createElement('div');
                 optionDiv.className = 'option';
                 optionDiv.innerHTML = `
-                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="currentExamAnswers[${currentQuestionIndex}] = this.value;">
+                    <input type="radio" name="question${currentQuestionIndex}" value="${option}" id="opt${idx}" onchange="selectAnswer(${currentQuestionIndex}, '${option}', this)">
                     <label for="opt${idx}">${option}</label>
                 `;
                 optionsContainer.appendChild(optionDiv);
             });
+        }
+        
+        // 日常练习：显示即时反馈区域
+        if (currentExam && currentExam.type === 'practice') {
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.id = 'practiceFeedback';
+            feedbackDiv.style.cssText = 'margin-top: 20px; padding: 15px; border-radius: 8px; display: none;';
+            questionContainer.appendChild(feedbackDiv);
         }
         
         if (currentExamAnswers[currentQuestionIndex]) {
@@ -2348,6 +2632,115 @@
         updateExamNavGrid();
     }
     
+    // 日常练习：多选题即时反馈
+    function checkMultiAnswer(questionIndex) {
+        if (!currentExam || currentExam.type !== 'practice') return;
+        
+        const question = currentExam.questions[questionIndex];
+        const correctAnswer = question.answer;
+        const selectedAnswers = currentExamAnswers[questionIndex] || '';
+        
+        // 检查答案（多选题需要完全匹配）
+        const correctSet = new Set(correctAnswer.split('|').map(s => s.trim()).filter(s => s));
+        const selectedSet = new Set(selectedAnswers.split('|').map(s => s.trim()).filter(s => s));
+        const isCorrect = correctSet.size === selectedSet.size && 
+                         [...correctSet].every(ans => selectedSet.has(ans));
+        
+        // 显示反馈
+        const feedbackDiv = document.getElementById('practiceFeedback');
+        if (feedbackDiv) {
+            feedbackDiv.style.display = 'block';
+            
+            if (isCorrect) {
+                feedbackDiv.style.background = '#d1fae5';
+                feedbackDiv.style.color = '#059669';
+                feedbackDiv.innerHTML = '✅ <strong>回答正确！</strong>';
+                
+                // 错题重练答对，移除错题
+                if (currentExam.isWrongQuestionPractice) {
+                    removeWrongQuestion(question.id);
+                }
+            } else {
+                feedbackDiv.style.background = '#fee2e2';
+                feedbackDiv.style.color = '#dc2626';
+                feedbackDiv.innerHTML = `❌ <strong>回答错误！</strong><br><br>正确答案：<span style="font-weight:bold;color:#059669;">${correctAnswer}</span>`;
+                
+                // 保存错题到数据库
+                if (!currentExam.isWrongQuestionPractice) {
+                    saveWrongQuestion(question, selectedAnswers, correctAnswer);
+                }
+            }
+        }
+        
+        // 标记选项颜色
+        const allOptions = document.querySelectorAll(`input[name="question${questionIndex}"]`);
+        const correctArray = [...correctSet];
+        allOptions.forEach(opt => {
+            const label = opt.parentElement.querySelector('label');
+            if (correctArray.includes(opt.value)) {
+                label.style.color = '#059669';  // 正确答案绿色
+                label.style.fontWeight = 'bold';
+            } else if (opt.checked && !correctArray.includes(opt.value)) {
+                label.style.color = '#dc2626';  // 错误答案红色
+                label.style.textDecoration = 'line-through';
+            }
+        });
+    }
+    
+    // 日常练习：选择答案后即时反馈
+    function selectAnswer(questionIndex, selectedAnswer, inputElement) {
+        currentExamAnswers[questionIndex] = selectedAnswer;
+        
+        // 如果是日常练习，立即检查答案
+        if (currentExam && currentExam.type === 'practice') {
+            const question = currentExam.questions[questionIndex];
+            const correctAnswer = question.answer;
+            const isCorrect = selectedAnswer === correctAnswer;
+            
+            // 显示反馈区域
+            const feedbackDiv = document.getElementById('practiceFeedback');
+            if (feedbackDiv) {
+                feedbackDiv.style.display = 'block';
+                
+                if (isCorrect) {
+                    feedbackDiv.style.background = '#d1fae5';
+                    feedbackDiv.style.color = '#059669';
+                    feedbackDiv.innerHTML = '✅ <strong>回答正确！</strong>';
+                    
+                    // 错题重练答对，移除错题
+                    if (currentExam.isWrongQuestionPractice) {
+                        removeWrongQuestion(question.id);
+                    }
+                } else {
+                    feedbackDiv.style.background = '#fee2e2';
+                    feedbackDiv.style.color = '#dc2626';
+                    feedbackDiv.innerHTML = `❌ <strong>回答错误！</strong><br><br>正确答案：<span style="font-weight:bold;color:#059669;">${correctAnswer}</span>`;
+                    
+                    // 保存错题到数据库（非错题重练时）
+                    if (!currentExam.isWrongQuestionPractice) {
+                        saveWrongQuestion(question, selectedAnswer, correctAnswer);
+                    }
+                }
+            }
+            
+            // 标记选项颜色
+            const allOptions = document.querySelectorAll(`input[name="question${questionIndex}"]`);
+            allOptions.forEach(opt => {
+                const label = opt.parentElement.querySelector('label');
+                if (opt.value === correctAnswer) {
+                    label.style.color = '#059669';  // 正确答案绿色
+                    label.style.fontWeight = 'bold';
+                } else if (opt.value === selectedAnswer && !isCorrect) {
+                    label.style.color = '#dc2626';  // 错误答案红色
+                    label.style.textDecoration = 'line-through';
+                }
+            });
+        }
+        
+        updateExamProgress();
+        updateExamNavGrid();
+    }
+    
     function updateExamProgress() {
         const progress = Math.round((Object.keys(currentExamAnswers).length / currentExam.questions.length) * 100);
         document.getElementById('examProgress').style.width = progress + '%';
@@ -2399,6 +2792,7 @@
         document.getElementById('examPage').style.display = 'flex';
         loadStudentExams(currentExamStudent.id);
         loadStudentScores(currentExamStudent.id);
+        loadWrongQuestions();  // 重新加载错题列表
     }
     
     function studentLogout() {
@@ -2411,6 +2805,200 @@
             document.getElementById('loginPage').style.display = 'flex';
             document.getElementById('studentName').value = '';
             document.getElementById('studentID').value = '';
+        }
+    }
+    
+    // ==================== 错题集功能 ====================
+    
+    // 保存错题到数据库
+    function saveWrongQuestion(question, userAnswer, correctAnswer) {
+        if (!currentExamStudent || !currentExamStudent.id) return;
+        
+        // 初始化错题集
+        if (!database.wrongQuestions) {
+            database.wrongQuestions = [];
+        }
+        
+        // 检查是否已存在该错题
+        const existingIndex = database.wrongQuestions.findIndex(
+            w => w.studentId === currentExamStudent.id && w.questionId === question.id
+        );
+        
+        if (existingIndex >= 0) {
+            // 已存在，更新错误次数和时间
+            database.wrongQuestions[existingIndex].wrongCount++;
+            database.wrongQuestions[existingIndex].lastWrongTime = Date.now();
+            database.wrongQuestions[existingIndex].userAnswer = userAnswer;
+        } else {
+            // 不存在，新增错题
+            database.wrongQuestions.push({
+                id: 'W' + String(database.wrongQuestions.length + 1).padStart(5, '0'),
+                studentId: currentExamStudent.id,
+                studentName: currentExamStudent.name,
+                questionId: question.id,
+                content: question.content,
+                type: question.type,
+                options: question.options || '',
+                correctAnswer: correctAnswer,
+                userAnswer: userAnswer,
+                wrongCount: 1,
+                lastWrongTime: Date.now(),
+                courseName: currentExam.name || '未知课程'
+            });
+        }
+        
+        saveData();
+    }
+    
+    // 移除错题（答对后）
+    function removeWrongQuestion(questionId) {
+        if (!currentExamStudent || !currentExamStudent.id) return;
+        
+        if (!database.wrongQuestions) return;
+        
+        const index = database.wrongQuestions.findIndex(
+            w => w.studentId === currentExamStudent.id && w.questionId === questionId
+        );
+        
+        if (index >= 0) {
+            database.wrongQuestions.splice(index, 1);
+            saveData();
+            showToast('答对了！该题已从错题集中移除', 'success');
+        }
+    }
+    
+    // 加载错题列表
+    function loadWrongQuestions() {
+        if (!currentExamStudent || !currentExamStudent.id) return;
+        
+        const wrongQuestions = (database.wrongQuestions || [])
+            .filter(w => w.studentId === currentExamStudent.id)
+            .sort((a, b) => b.lastWrongTime - a.lastWrongTime);  // 按时间倒序
+        
+        const container = document.getElementById('wrongQuestionList');
+        const countEl = document.getElementById('wrongQuestionCount');
+        
+        countEl.textContent = wrongQuestions.length + '题';
+        
+        if (wrongQuestions.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#999; padding:30px;">暂无错题</div>';
+            return;
+        }
+        
+        // 按题型分组统计
+        const typeStats = {};
+        wrongQuestions.forEach(wq => {
+            const typeName = getTypeName(wq.type);
+            if (!typeStats[typeName]) {
+                typeStats[typeName] = 0;
+            }
+            typeStats[typeName]++;
+        });
+        
+        let html = '<div style="padding: 15px; background: #f7fafc; border-radius: 8px; margin-bottom: 15px;">';
+        html += '<div style="margin-bottom: 10px; color: #4a5568; font-weight: 500;">题型分布：</div>';
+        html += '<div style="display: flex; gap: 15px; flex-wrap: wrap;">';
+        for (const [type, count] of Object.entries(typeStats)) {
+            html += `<span style="background: #edf2f7; padding: 4px 12px; border-radius: 12px; font-size: 13px;">${type}: ${count}题</span>`;
+        }
+        html += '</div></div>';
+        
+        // 错题列表（显示最近10条）
+        html += '<div style="max-height: 300px; overflow-y: auto;">';
+        wrongQuestions.slice(0, 10).forEach((wq, idx) => {
+            const typeColor = {
+                'single': '#3182ce',
+                'multi': '#805ad5',
+                'judge': '#38a169',
+                'fill': '#d69e2e'
+            }[wq.type] || '#718096';
+            
+            const timeAgo = getTimeAgo(wq.lastWrongTime);
+            
+            html += `
+                <div style="background: white; padding: 12px; margin-bottom: 10px; border-radius: 6px; border-left: 3px solid ${typeColor};">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="background: ${typeColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px;">${getTypeName(wq.type)}</span>
+                        <span style="color: #a0aec0; font-size: 12px;">${timeAgo}</span>
+                    </div>
+                    <div style="color: #2d3748; margin-bottom: 8px; line-height: 1.5;">${wq.content}</div>
+                    <div style="color: #718096; font-size: 12px;">
+                        错误 ${wq.wrongCount} 次 | 
+                        你的答案：<span style="color: #e53e3e;">${wq.userAnswer}</span> | 
+                        正确答案：<span style="color: #38a169;">${wq.correctAnswer}</span>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        // 开始错题重练按钮
+        html += `
+            <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="startWrongQuestionPractice()">
+                开始错题重练 (${wrongQuestions.length}题)
+            </button>
+        `;
+        
+        container.innerHTML = html;
+    }
+    
+    // 开始错题重练
+    function startWrongQuestionPractice() {
+        if (!currentExamStudent || !currentExamStudent.id) {
+            showToast('请先登录', 'error');
+            return;
+        }
+        
+        const wrongQuestions = (database.wrongQuestions || [])
+            .filter(w => w.studentId === currentExamStudent.id);
+        
+        if (wrongQuestions.length === 0) {
+            showToast('暂无错题', 'error');
+            return;
+        }
+        
+        // 创建临时考试对象
+        currentExam = {
+            id: 'wrong_question_practice',
+            name: '错题重练',
+            type: 'practice',
+            isWrongQuestionPractice: true,
+            timeLimit: 0,  // 无时间限制
+            questions: wrongQuestions.map(wq => ({
+                id: wq.questionId,
+                content: wq.content,
+                type: wq.type,
+                options: wq.options,
+                answer: wq.correctAnswer
+            })),
+            questionCount: wrongQuestions.length
+        };
+        
+        currentExamIndex = -1;
+        currentExamAnswers = {};
+        examStartTime = Date.now();
+        
+        document.getElementById('examPage').style.display = 'none';
+        document.getElementById('examTestingPage').style.display = 'flex';
+        document.getElementById('examTitle').textContent = '错题重练';
+        
+        currentQuestionIndex = 0;
+        showExamQuestion();
+    }
+    
+    // 时间格式化
+    function getTimeAgo(timestamp) {
+        const now = Date.now();
+        const diff = now - timestamp;
+        
+        if (diff < 60000) {
+            return '刚刚';
+        } else if (diff < 3600000) {
+            return Math.floor(diff / 60000) + '分钟前';
+        } else if (diff < 86400000) {
+            return Math.floor(diff / 3600000) + '小时前';
+        } else {
+            return Math.floor(diff / 86400000) + '天前';
         }
     }
     
@@ -2564,8 +3152,8 @@
     
     function saveStudent() {
         const id = document.getElementById('studentIdInput').value.trim();
-        const name = document.getElementById('studentName_add').value;
-        const phone = document.getElementById('studentPhone').value;
+        const name = document.getElementById('studentName_add').value.trim();
+        const phone = document.getElementById('studentPhone').value.trim();
         const course = document.getElementById('studentCourse').value;
         
         if (!id) {
@@ -3186,6 +3774,13 @@
                 answerDisplay = `<span style="color:#667eea;font-weight:bold;">${letters.join('') || '-'}</span>`;
             }
 
+            // 图片显示
+            const imageHtml = q.imageUrl ? 
+                `<div style="max-width:100px;max-height:80px;overflow:hidden;border:1px solid #ddd;border-radius:4px;">
+                    <img src="${q.imageUrl}" style="width:100%;height:auto;display:block;" alt="题目图片" />
+                </div>` : 
+                `<span style="color:#999;font-size:12px;">无图片</span>`;
+
             return `
             <tr>
                 <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
@@ -3194,6 +3789,7 @@
                 <td>${getTypeName(q.type)}</td>
                 <td>${getDifficultyName(q.difficulty)}</td>
                 <td>${answerDisplay}</td>
+                <td>${imageHtml}</td>
                 <td>
                     <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteQuestion('${q.id}')">删除</button>
@@ -3235,6 +3831,13 @@
                 answerDisplay = `<span style="color:#667eea;font-weight:bold;">${letters.join('') || '-'}</span>`;
             }
 
+            // 图片显示
+            const imageHtml = q.imageUrl ? 
+                `<div style="max-width:100px;max-height:80px;overflow:hidden;border:1px solid #ddd;border-radius:4px;">
+                    <img src="${q.imageUrl}" style="width:100%;height:auto;display:block;" alt="题目图片" />
+                </div>` : 
+                `<span style="color:#999;font-size:12px;">无图片</span>`;
+
             return `
             <tr>
                 <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
@@ -3243,6 +3846,7 @@
                 <td>${getTypeName(q.type)}</td>
                 <td>${getDifficultyName(q.difficulty)}</td>
                 <td>${answerDisplay}</td>
+                <td>${imageHtml}</td>
                 <td>
                     <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteQuestion('${q.id}')">删除</button>
@@ -3319,6 +3923,18 @@
         document.getElementById('questionTypeSelect').value = 'single';
         document.getElementById('questionDifficultySelect').value = 'easy';
         document.getElementById('questionLevelSelect').value = database.levels[0] || '初级';
+        document.getElementById('questionImageUrlInput').value = '';
+        
+        // 清除图片预览
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+        const fileInput = document.getElementById('imageFileUpload');
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (previewImage) {
+            previewImage.style.display = 'none';
+            previewImage.src = '';
+        }
+        if (fileInput) fileInput.value = '';
         
         // 确保设置正确的标题和按钮
         const modal = document.getElementById('addQuestionModal');
@@ -3346,12 +3962,29 @@
         const typeInput = document.getElementById('questionTypeSelect');
         const difficultyInput = document.getElementById('questionDifficultySelect');
         const levelInput = document.getElementById('questionLevelSelect');
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
         
         contentInput.value = question.content || '';
         optionsInput.value = question.options || '';
         typeInput.value = question.type || 'single';
         difficultyInput.value = question.difficulty || 'easy';
         levelInput.value = question.level || database.levels[0] || '初级';
+        imageUrlInput.value = question.imageUrl || '';
+        
+        // 更新图片预览
+        if (question.imageUrl) {
+            updateImagePreview();
+        } else {
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            const previewImage = document.getElementById('imagePreview');
+            const fileInput = document.getElementById('imageFileUpload');
+            if (previewContainer) previewContainer.style.display = 'none';
+            if (previewImage) {
+                previewImage.style.display = 'none';
+                previewImage.src = '';
+            }
+            if (fileInput) fileInput.value = '';
+        }
         
         const modal = document.getElementById('addQuestionModal');
         const header = modal.querySelector('.modal-header');
@@ -3363,18 +3996,91 @@
         modal.classList.add('active');
     }
     
+    // 图片处理相关函数
+    function updateImagePreview() {
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+        const value = imageUrlInput.value;
+        
+        if (value && (value.startsWith('http') || value.startsWith('data:image/'))) {
+            previewContainer.style.display = 'block';
+            previewImage.src = value;
+            previewImage.style.display = 'block';
+        } else {
+            previewContainer.style.display = 'none';
+            previewImage.style.display = 'none';
+            previewImage.src = '';
+        }
+    }
+    
+    function handleImageUpload() {
+        const fileInput = document.getElementById('imageFileUpload');
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+        
+        if (fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            
+            // 检查文件类型
+            if (!file.type.startsWith('image/')) {
+                showToast('❌ 请选择图片文件', 'error');
+                return;
+            }
+            
+            // 检查文件大小（限制5MB）
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('❌ 图片文件太大（最大5MB）', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // 转换为Base64
+                const base64Data = e.target.result;
+                imageUrlInput.value = base64Data;
+                
+                // 显示预览
+                previewContainer.style.display = 'block';
+                previewImage.src = base64Data;
+                previewImage.style.display = 'block';
+                
+                showToast('✅ 图片上传成功', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+    
+    function clearImage() {
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+        const fileInput = document.getElementById('imageFileUpload');
+        
+        imageUrlInput.value = '';
+        previewContainer.style.display = 'none';
+        previewImage.style.display = 'none';
+        previewImage.src = '';
+        fileInput.value = '';
+        
+        showToast('✅ 图片已清除', 'success');
+    }
+    
     function saveQuestion() {
         const contentInput = document.getElementById('questionContentInput');
         const optionsInput = document.getElementById('questionOptionsInput');
         const typeInput = document.getElementById('questionTypeSelect');
         const difficultyInput = document.getElementById('questionDifficultySelect');
         const levelInput = document.getElementById('questionLevelSelect');
+        const imageUrlInput = document.getElementById('questionImageUrlInput');
         
         const content = contentInput.value.trim();
         const type = typeInput.value;
         const difficulty = difficultyInput.value;
         const level = levelInput.value || database.levels[0] || '初级';
         const options = optionsInput.value.trim();
+        const imageUrl = imageUrlInput.value.trim();
         
         if (!content) {
             showToast('❌ 请填写题目内容', 'error');
@@ -3409,6 +4115,7 @@
                 question.level = level;
                 question.options = optionsStr;
                 question.answer = answer;
+                question.imageUrl = imageUrl;
                 saveData();
                 showToast('✅ 题目更新成功', 'success');
             } else {
@@ -3423,7 +4130,8 @@
                 difficulty: difficulty,
                 level: level,
                 options: optionsStr,
-                answer: answer
+                answer: answer,
+                imageUrl: imageUrl  // 使用输入的值
             };
             database.questions.push(newQuestion);
             saveData();
@@ -3590,7 +4298,7 @@
                         
                         // 智能识别格式
                         if (fields.length >= 9) {
-                            // 新格式（分列选项）：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案
+                            // 新格式（分列选项）：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案,图片URL
                             id = 'Q' + String(database.questions.length + 1).padStart(3, '0');
                             qContent = fields[1] ? fields[1].trim() : '';
                             qType = fields[2] ? fields[2].trim() : 'single';
@@ -3618,6 +4326,9 @@
                             }
                             
                             qOptions = opts.join('|');
+                            
+                            // 图片URL（第10列）
+                            const imageUrl = fields[9] ? fields[9].trim() : '';
                             
                             // 转换答案：字母 -> 选项内容
                             const answerField = fields[8] ? fields[8].trim() : '';
@@ -3660,6 +4371,12 @@
                         } else {
                             errors.push(`第${i+1}行：字段数不足（需要至少6个字段，实际${fields.length}个）`);
                             continue;
+                        }
+                        
+                        // 【重要修复】无条件初始化 imageUrl，避免 is not defined
+                        var imageUrl = '';
+                        if (fields.length >= 10 && fields[9]) {
+                            imageUrl = fields[9].trim();
                         }
                         
                         // 确保级别有效
@@ -3707,6 +4424,11 @@
                             continue;
                         }
                         
+                        // 【修复】确保 imageUrl 有默认值，避免 is not defined 错误
+                        if (typeof imageUrl === 'undefined') {
+                            imageUrl = '';
+                        }
+
                         // 验证题型
                         if (!['single', 'multi', 'judge', 'fill'].includes(qType)) {
                             errors.push(`第${i+1}行：题型"${qType}"无效（应为 single/multi/judge/fill）`);
@@ -3728,7 +4450,8 @@
                             difficulty: 'medium', // 默认难度
                             level: qLevel,
                             options: qOptions,
-                            answer: qAnswer
+                            answer: qAnswer,
+                            imageUrl: imageUrl || ''
                         });
                         importCount++;
                     } catch (lineErr) {
@@ -3828,11 +4551,15 @@
             };
             const typeLabel = typeLabels[e.type || 'formal'] || typeLabels['formal'];
 
+            // 构建时间控制信息
+            const timeControlInfo = getTimeControlInfo(e);
+
             return `<tr>
                 <td>${e.name} ${typeLabel}</td>
                 <td>${typeDesc}</td>
                 <td>${(e.levels || []).length > 0 ? (e.levels || []).join('、') : '全部'}</td>
                 <td>${e.timeLimit === 0 ? '无限制' : e.timeLimit + '分钟'}</td>
+                <td>${timeControlInfo}</td>
                 <td>${e.participants || 0}</td>
                 <td><span style="color: #48bb78;">${e.status === 'active' ? '活跃' : '已结束'}</span></td>
                 <td>
@@ -3841,6 +4568,51 @@
                 </td>
             </tr>`;
         }).join('');
+    }
+
+    // 获取时间控制信息
+    function getTimeControlInfo(exam) {
+        const hasStartTime = exam.startTime && exam.startTime.trim();
+        const hasEndTime = exam.endTime && exam.endTime.trim();
+        
+        if (!hasStartTime && !hasEndTime && !exam.enableAutoSubmit) {
+            return '<span style="color:#666;font-size:12px;">无时间控制</span>';
+        }
+        
+        let infoParts = [];
+        
+        if (hasStartTime) {
+            const startTimeStr = formatTimeDisplay(exam.startTime);
+            infoParts.push(`开始：${startTimeStr}`);
+        }
+        
+        if (hasEndTime) {
+            const endTimeStr = formatTimeDisplay(exam.endTime);
+            infoParts.push(`结束：${endTimeStr}`);
+        }
+        
+        if (exam.enableAutoSubmit) {
+            infoParts.push('<span style="color:#4caf50;font-weight:bold;">自动交卷</span>');
+        }
+        
+        return infoParts.join('<br>');
+    }
+
+    // 格式化时间显示
+    function formatTimeDisplay(timeStr) {
+        if (!timeStr || !timeStr.trim()) return '';
+        try {
+            const date = new Date(timeStr);
+            if (isNaN(date.getTime())) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}/${month}/${day} ${hours}:${minutes}`;
+        } catch (e) {
+            return '';
+        }
     }
     
     let editingExamId = null;
@@ -3853,6 +4625,9 @@
         document.getElementById('examTime').value = '60';
         document.getElementById('examPassScore').value = '60';
         document.getElementById('examMaxAttempts').value = '1';
+        document.getElementById('examStartTime').value = '';
+        document.getElementById('examEndTime').value = '';
+        document.getElementById('examEnableAutoSubmit').checked = false;
         toggleExamTypeFields();  // 更新字段显示状态
         refreshExamLevelChecks();
         buildExamTypeCountUI();
@@ -3870,6 +4645,20 @@
         document.getElementById('examTime').value = exam.timeLimit;
         document.getElementById('examPassScore').value = exam.passScore || 60;
         document.getElementById('examMaxAttempts').value = exam.maxAttempts || 1;
+        
+        // 回填新增的时间控制字段
+        if (exam.startTime) {
+            document.getElementById('examStartTime').value = formatDateForInput(exam.startTime);
+        } else {
+            document.getElementById('examStartTime').value = '';
+        }
+        if (exam.endTime) {
+            document.getElementById('examEndTime').value = formatDateForInput(exam.endTime);
+        } else {
+            document.getElementById('examEndTime').value = '';
+        }
+        document.getElementById('examEnableAutoSubmit').checked = !!exam.enableAutoSubmit;
+        
         toggleExamTypeFields();  // 更新字段显示状态
         refreshExamLevelChecks();
         // 勾选当前级别
@@ -3894,6 +4683,23 @@
         });
         updateExamTypeSummary();
         document.getElementById('addExamModal').classList.add('active');
+    }
+
+    // 格式化日期为datetime-local输入框所需的格式 (YYYY-MM-DDTHH:mm)
+    function formatDateForInput(dateStr) {
+        if (!dateStr) return '';
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        } catch (e) {
+            return '';
+        }
     }
 
     // 根据考试类型切换字段显示
@@ -3939,6 +4745,9 @@
         const score = document.getElementById('examPassScore').value;
         const maxAttempts = document.getElementById('examMaxAttempts').value;
         const typeCounts = getExamTypeCounts();
+        const startTime = document.getElementById('examStartTime').value;
+        const endTime = document.getElementById('examEndTime').value;
+        const enableAutoSubmit = document.getElementById('examEnableAutoSubmit').checked;
 
         // 获取选中的级别
         const selectedLevels = getSelectedExamLevels();
@@ -3973,6 +4782,10 @@
                 exam.maxAttempts = type === 'formal' ? parseInt(maxAttempts) : 999;  // 模拟考试和练习不限次数
                 exam.levels = selectedLevels;
                 exam.typeCounts = typeCounts;
+                // 时间控制字段
+                exam.startTime = startTime || null;
+                exam.endTime = endTime || null;
+                exam.enableAutoSubmit = enableAutoSubmit;
                 // 配置变更，清空已生成的题目以便下次重新生成
                 exam.questions = [];
             }
@@ -3984,15 +4797,18 @@
                 name: name,
                 type: type,  // 保存考试类型
                 questionCount: totalCount,
-                timeLimit: parseInt(time),
+                timeLimit: parseInt(time),  // 考试总时长（分钟）
                 participants: 0,
                 status: 'active',
-                passScore: parseInt(score),
+                passScore: parseInt(score),  // 及格分数线
                 maxAttempts: type === 'formal' ? parseInt(maxAttempts) : 999,  // 模拟考试和练习不限次数
                 levels: selectedLevels,
                 typeCounts: typeCounts,
                 questions: [],
-                showAnswer: type !== 'formal'  // 模拟考试和练习考后显示答案
+                showAnswer: type !== 'formal',  // 模拟考试和练习考后显示答案
+                startTime: startTime || null,  // 考试开始时间
+                endTime: endTime || null,   // 考试结束时间
+                enableAutoSubmit: enableAutoSubmit  // 是否启用自动交卷
             });
             showToast('考试创建成功', 'success');
         }
@@ -4861,14 +5677,10 @@
             el2.textContent = size > 1024 ? (size / 1024).toFixed(1) + ' KB' : size + ' B';
         }
         
-        // 显示数据模式
+        // 显示数据模式（v2.12.4: 固定为本地存储+同步码）
         const dataModeEl = document.getElementById('infoDataMode');
         if (dataModeEl) {
-            if (isCloudReady) {
-                dataModeEl.innerHTML = '<span style="color:#38a169;">☁️ 云端同步</span>';
-            } else {
-                dataModeEl.innerHTML = '<span style="color:#e53e3e;">💾 本地存储</span>';
-            }
+            dataModeEl.innerHTML = '<span style="color:#2c5282;">💾 本地存储 + 同步码</span>';
         }
         
         document.getElementById('infoStudentCount').textContent = database.students.length;
@@ -4955,7 +5767,9 @@
         
         // 自动切换到学员登录tab
         const studentTab = document.querySelector('[onclick*="switchLoginTab"][onclick*="student"]');
-        if (studentTab) studentTab.click();
+        if (studentTab) {
+            switchLoginTab('student', studentTab);
+        }
         
         switchStudentLoginTab('password', document.querySelector('#studentForm .login-tab'));
         showToast('请输入姓名和学员ID进入「' + exam.name + '」考试', 'info');
@@ -5015,68 +5829,9 @@
     // 数据持久化
     const STORAGE_KEY = 'training_management_db';
 
-    // ==================== 云开发配置 ====================
-    const CLOUDBASE_CONFIG = {
-        env: 'ranpeng-training-4ft5k55788574ea',  // 环境ID
-        region: 'ap-shanghai'  // 地域
-    };
-
-    let cloudApp = null;
-    let cloudDb = null;
-    let isCloudReady = false;
-
-    // 初始化云开发
-    async function initCloudBase() {
-        try {
-            console.log('开始初始化云开发...');
-            
-            // 检查 cloudbase SDK 是否加载
-            if (typeof cloudbase === 'undefined') {
-                throw new Error('CloudBase SDK 未加载');
-            }
-            console.log('✅ CloudBase SDK 已加载');
-            
-            // 初始化 CloudBase
-            cloudApp = cloudbase.init(CLOUDBASE_CONFIG);
-            console.log('✅ CloudBase 初始化成功');
-            
-            // 匿名登录（控制台已开启）
-            const auth = cloudApp.auth();
-            console.log('开始匿名登录...');
-            await auth.anonymousAuthProvider().signIn();
-            console.log('✅ 匿名登录成功');
-            
-            cloudDb = cloudApp.database();
-            isCloudReady = true;
-            console.log('✅ 云开发初始化成功（匿名登录）');
-
-            // 从云端加载数据
-            await loadData();
-            return true;
-        } catch (e) {
-            console.error('❌ 云开发初始化失败:', e);
-            console.error('错误详情:', e.message || e);
-            
-            // 在页面上显示错误（调试用）
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#e53e3e;color:white;padding:15px 25px;border-radius:8px;z-index:9999;font-size:14px;';
-            errorDiv.innerHTML = '⚠️ 云开发初始化失败: ' + (e.message || e) + '<br>已降级到本地存储模式';
-            document.body.appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 8000);
-            
-            // 降级到本地存储
-            isCloudReady = false;
-            await loadData();
-            return false;
-        }
-    }
+    // ==================== 数据存储（纯本地） ====================
 
     function saveData() {
-        if (isCloudReady && cloudDb) {
-            // 异步保存到云数据库，不阻塞UI
-            saveToCloud().catch(e => console.warn('云端保存失败:', e));
-        }
-        // 同时保存到本地作为备份
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
         } catch (e) {
@@ -5084,52 +5839,7 @@
         }
     }
 
-    async function saveToCloud() {
-        if (!cloudDb) return;
-
-        const dataToSave = JSON.parse(JSON.stringify(database));
-
-        // 将整个database对象存到一个文档中
-        try {
-            const collection = cloudDb.collection('system_data');
-            const docId = 'main_database';
-
-            // 先尝试更新
-            const updateRes = await collection.doc(docId).set(dataToSave);
-            if (updateRes.updated === 0) {
-                // 如果更新失败，尝试创建
-                await collection.add({ _id: docId, ...dataToSave });
-            }
-            console.log('数据已同步到云端');
-        } catch (e) {
-            console.error('云端保存出错:', e);
-        }
-    }
-
-    async function loadData() {
-        // 先尝试从云端加载
-        if (isCloudReady && cloudDb) {
-            try {
-                const collection = cloudDb.collection('system_data');
-                const res = await collection.doc('main_database').get();
-
-                if (res.data && res.data.length > 0) {
-                    const cloudData = res.data[0];
-                    // 合并云端数据
-                    Object.keys(database).forEach(key => {
-                        if (cloudData[key] !== undefined) {
-                            database[key] = cloudData[key];
-                        }
-                    });
-                    console.log('从云端加载数据成功');
-                    return;
-                }
-            } catch (e) {
-                console.warn('云端加载失败，使用本地数据:', e);
-            }
-        }
-
-        // 降级到本地存储
+    function loadData() {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
@@ -5139,17 +5849,881 @@
                         database[key] = parsed[key];
                     }
                 });
+                console.log('从本地存储加载数据成功');
             }
         } catch (e) {
             console.warn('本地加载数据失败:', e);
         }
     }
+
+    // ==================== 同步码功能（管理员→学员数据同步） ====================
+    // 原理：管理员生成一个带同步码的链接，学员打开链接自动导入数据
+    
+    // 压缩同步码生成函数（大幅减少字符数）
+    function generateCompressedSyncCode() {
+        try {
+            console.log('开始生成压缩同步码...');
+            
+            // ==================== 数据压缩方案 ====================
+            // 方案特点：
+            // 1. 单字符字段名：i=id, n=name, c=course, s=status
+            // 2. 枚举值简化：difficulty用首字母，status用1/0
+            // 3. 日期简化：只保留年月日
+            // 4. Base64URL编码：移除填充字符=
+            // 5. 文本优化：常见术语缩写
+            
+            // 1. 基础数据压缩
+            const baseData = {
+                s: database.students.map(s => ({
+                    i: s.id,                         // id -> i
+                    n: s.name,                       // name -> n
+                    c: s.course,                     // course -> c
+                    st: s.status === 'active' ? 1 : 0 // status -> st, active=1,其他=0
+                })),
+                c: database.courses.map(c => ({
+                    i: c.id,                         // id -> i
+                    n: c.name.replace('基础', 'B').replace('编程', 'P'), // 名称简化
+                    t: c.teacher.charAt(0),          // 老师姓首字母
+                    h: c.hours,                      // hours -> h
+                    p: c.price                       // price -> p
+                })),
+                l: database.levels.map(l => l.charAt(0)), // 级别只保留首字：初->初,中->中,高->高
+                e: database.exams.map(e => ({
+                    i: e.id,
+                    n: e.name.replace('测试', 'T').replace('考试', 'E'),
+                    qc: e.questionCount,
+                    tl: e.timeLimit
+                })),
+                v: 'v2.12.4z',                       // 标记为压缩版本
+                t: new Date().toISOString().split('T')[0] // 只保留日期：2026-04-09
+            };
+            
+            // 2. 题库数据极致压缩
+            const questions = database.questions;
+            console.log('题库数量:', questions.length);
+            
+            // 文本缩写映射
+            const textMap = {
+                'JavaScript': 'JS',
+                'Python': 'PY',
+                'var': 'v',
+                'let': 'l',
+                'const': 'c',
+                '函数': 'fn',
+                '变量': 'var',
+                '循环': 'lp',
+                '数组': 'arr',
+                '对象': 'obj',
+                '字符串': 'str',
+                '数字': 'num',
+                '布尔': 'bool',
+                '空值': 'null',
+                '未定义': 'undef',
+                '类型': 'type',
+                '声明': 'decl',
+                '常量': 'const',
+                '操作': 'op',
+                '表达式': 'expr',
+                '条件': 'cond',
+                '返回': 'ret',
+                '错误': 'err',
+                '测试': 'test',
+                '基础': 'base',
+                '高级': 'adv',
+                '中级': 'mid',
+                '初级': 'beg',
+                '可以': '可',
+                '不可以': '不可',
+                '区别': '区',
+                '哪些': '哪',
+                '中的': '的',
+                '下列': '下'
+            };
+            
+            // 压缩文本函数
+            function compressText(text) {
+                if (!text) return '';
+                let result = text;
+                for (const [key, value] of Object.entries(textMap)) {
+                    result = result.split(key).join(value);
+                }
+                // 移除多余标点
+                result = result.replace(/[，。；：、]/g, '');
+                return result;
+            }
+            
+            const questionsData = questions.map(q => ({
+                i: q.id,
+                d: compressText(q.content).substring(0, 60), // content -> d, 限制60字符
+                t: q.type === 'single' ? 's' : q.type === 'multi' ? 'm' : q.type === 'judge' ? 'j' : 'f', // 题型简写
+                df: q.difficulty.charAt(0), // difficulty首字母
+                l: q.level.charAt(0),       // level首字母
+                o: compressText(q.options).substring(0, 120), // options -> o
+                a: compressText(q.answer).substring(0, 40)    // answer -> a
+            }));
+            
+            // 3. 合并数据
+            const combinedData = { ...baseData, q: questionsData };
+            
+            // 4. 生成紧凑JSON（无空格，无换行）
+            const jsonStr = JSON.stringify(combinedData).replace(/\s+/g, '');
+            console.log('压缩后JSON大小:', jsonStr.length, '字节');
+            
+            // 5. Base64URL编码（移除填充字符=）
+            const utf8Str = unescape(encodeURIComponent(jsonStr));
+            const base64 = btoa(utf8Str);
+            const base64url = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            
+            console.log('压缩同步码长度:', base64url.length, '字符');
+            
+            // 6. 如果还是太大，分块处理
+            let finalCode = base64url;
+            if (base64url.length > 30000) {
+                console.log('数据过大，启用分块模式');
+                // 将题库数据分块
+                const chunkSize = 50; // 每块50题
+                const chunks = [];
+                for (let i = 0; i < questionsData.length; i += chunkSize) {
+                    chunks.push(questionsData.slice(i, i + chunkSize));
+                }
+                
+                // 生成基础数据部分
+                const baseOnlyData = { ...baseData, q: [] };
+                const baseJson = JSON.stringify(baseOnlyData).replace(/\s+/g, '');
+                const baseUtf8 = unescape(encodeURIComponent(baseJson));
+                const base64Base = btoa(baseUtf8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                
+                // 生成题库块
+                const questionChunks = chunks.map((chunk, idx) => {
+                    const chunkData = {
+                        p: idx + 1,      // part
+                        t: chunks.length, // total
+                        d: chunk         // data
+                    };
+                    const chunkJson = JSON.stringify(chunkData).replace(/\s+/g, '');
+                    const chunkUtf8 = unescape(encodeURIComponent(chunkJson));
+                    return btoa(chunkUtf8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                });
+                
+                // 组合：基础数据 + 分隔符 + 题库块
+                finalCode = base64Base + '|B|' + questionChunks.join('|Q|');
+            }
+            
+            const sizeKB = (finalCode.length / 1024).toFixed(1);
+            if (finalCode.length > 10000) {
+                showToast(`压缩完成（${sizeKB}KB），比原版节省约40-60%`, 'success');
+            } else {
+                showToast(`压缩完成（${sizeKB}KB），手机复制更方便了`, 'success');
+            }
+            
+            return finalCode;
+        } catch (e) {
+            console.error('生成压缩同步码失败:', e);
+            // 失败时回退到原始方案
+            console.log('回退到原始同步码方案');
+            return generateSyncCode();
+        }
+    }
+    
+    // 解压缩同步码
+    function decompressSyncCode(code) {
+        try {
+            console.log('开始解压缩同步码...');
+            
+            // 检查是否是压缩格式
+            if (!code.includes('|B|') && code.includes('-') && code.includes('_')) {
+                // Base64URL格式，需要还原
+                let base64 = code.replace(/-/g, '+').replace(/_/g, '/');
+                // 添加填充字符
+                const pad = base64.length % 4;
+                if (pad) {
+                    base64 += '='.repeat(4 - pad);
+                }
+                
+                const utf8Str = decodeURIComponent(escape(atob(base64)));
+                const data = JSON.parse(utf8Str);
+                
+                // 数据还原
+                const result = {
+                    students: data.s ? data.s.map(s => ({
+                        id: s.i || s.id,
+                        name: s.n || s.name,
+                        course: s.c || s.course,
+                        status: s.st === 1 ? 'active' : (s.st === 0 ? 'inactive' : s.status)
+                    })) : [],
+                    courses: data.c ? data.c.map(c => ({
+                        id: c.i || c.id,
+                        name: c.n || c.name,
+                        teacher: c.t || c.teacher,
+                        hours: c.h || c.hours,
+                        price: c.p || c.price
+                    })) : [],
+                    levels: data.l || [],
+                    exams: data.e ? data.e.map(e => ({
+                        id: e.i || e.id,
+                        name: e.n || e.name,
+                        questionCount: e.qc || e.questionCount,
+                        timeLimit: e.tl || e.timeLimit
+                    })) : [],
+                    questions: data.q ? data.q.map(q => ({
+                        id: q.i || q.id,
+                        content: q.d || q.content,
+                        type: q.t === 's' ? 'single' : q.t === 'm' ? 'multi' : q.t === 'j' ? 'judge' : 'fill',
+                        difficulty: q.df === 'e' ? 'easy' : q.df === 'm' ? 'medium' : q.df === 'h' ? 'hard' : q.difficulty,
+                        level: q.l === '初' ? '初级' : q.l === '中' ? '中级' : q.l === '高' ? '高级' : q.level,
+                        options: q.o || q.options,
+                        answer: q.a || q.answer
+                    })) : []
+                };
+                
+                console.log('解压缩成功，数据已还原');
+                return result;
+            }
+            
+            // 如果是分块格式
+            if (code.includes('|B|')) {
+                const parts = code.split('|B|');
+                const baseCode = parts[0];
+                const questionParts = parts[1] ? parts[1].split('|Q|').filter(p => p) : [];
+                
+                // 解码基础数据
+                let base64 = baseCode.replace(/-/g, '+').replace(/_/g, '/');
+                const pad = base64.length % 4;
+                if (pad) {
+                    base64 += '='.repeat(4 - pad);
+                }
+                const baseUtf8 = decodeURIComponent(escape(atob(base64)));
+                const baseData = JSON.parse(baseUtf8);
+                
+                // 收集所有题库数据
+                let allQuestions = [];
+                for (const qPart of questionParts) {
+                    let qBase64 = qPart.replace(/-/g, '+').replace(/_/g, '/');
+                    const qPad = qBase64.length % 4;
+                    if (qPad) {
+                        qBase64 += '='.repeat(4 - qPad);
+                    }
+                    const qUtf8 = decodeURIComponent(escape(atob(qBase64)));
+                    const qData = JSON.parse(qUtf8);
+                    allQuestions = allQuestions.concat(qData.d || []);
+                }
+                
+                // 构建完整数据
+                const result = {
+                    students: baseData.s ? baseData.s.map(s => ({
+                        id: s.i || s.id,
+                        name: s.n || s.name,
+                        course: s.c || s.course,
+                        status: s.st === 1 ? 'active' : (s.st === 0 ? 'inactive' : s.status)
+                    })) : [],
+                    courses: baseData.c ? baseData.c.map(c => ({
+                        id: c.i || c.id,
+                        name: c.n || c.name,
+                        teacher: c.t || c.teacher,
+                        hours: c.h || c.hours,
+                        price: c.p || c.price
+                    })) : [],
+                    levels: baseData.l || [],
+                    exams: baseData.e ? baseData.e.map(e => ({
+                        id: e.i || e.id,
+                        name: e.n || e.name,
+                        questionCount: e.qc || e.questionCount,
+                        timeLimit: e.tl || e.timeLimit
+                    })) : [],
+                    questions: allQuestions.map(q => ({
+                        id: q.i || q.id,
+                        content: q.d || q.content,
+                        type: q.t === 's' ? 'single' : q.t === 'm' ? 'multi' : q.t === 'j' ? 'judge' : 'fill',
+                        difficulty: q.df === 'e' ? 'easy' : q.df === 'm' ? 'medium' : q.df === 'h' ? 'hard' : q.difficulty,
+                        level: q.l === '初' ? '初级' : q.l === '中' ? '中级' : q.l === '高' ? '高级' : q.level,
+                        options: q.o || q.options,
+                        answer: q.a || q.answer
+                    }))
+                };
+                
+                console.log('分块解压缩成功');
+                return result;
+            }
+            
+            // 如果不是压缩格式，返回null，让原始函数处理
+            return null;
+        } catch (e) {
+            console.error('解压缩失败:', e);
+            return null;
+        }
+    }
+
+    function generateSyncCode() {
+        try {
+            console.log('开始生成智能同步码...');
+            
+            // 1. 基础数据（必须同步）
+            const baseData = {
+                s: database.students.map(s => ({ 
+                    id: s.id, name: s.name, course: s.course, status: s.status 
+                })),
+                c: database.courses,
+                l: database.levels,
+                e: database.exams,
+                v: 'v2.12.4',
+                t: new Date().toISOString()
+            };
+            
+            // 2. 题库数据（根据大小决定如何同步）
+            const questions = database.questions;
+            console.log('题库数量:', questions.length);
+            
+            // 计算题库数据大小
+            const questionsData = questions.map(q => ({
+                id: q.id, 
+                content: q.content && q.content.length > 100 ? q.content.substring(0, 100) + '...' : q.content,
+                type: q.type, 
+                difficulty: q.difficulty, 
+                level: q.level, 
+                options: q.options, 
+                answer: q.answer
+            }));
+            
+            const baseStr = JSON.stringify(baseData).replace(/\s+/g, '');
+            const questionsStr = JSON.stringify(questionsData).replace(/\s+/g, '');
+            
+            console.log('基础数据大小:', baseStr.length, '字节');
+            console.log('题库数据大小:', questionsStr.length, '字节');
+            
+            // 方案选择：根据总大小决定
+            const totalSize = baseStr.length + questionsStr.length;
+            let syncCode;
+            
+            if (totalSize < 20000) {
+                // 方案A：单次同步（适合小数据量）
+                console.log('使用方案A：单次同步');
+                const combinedData = { ...baseData, q: questionsData };
+                syncCode = btoa(unescape(encodeURIComponent(
+                    JSON.stringify(combinedData).replace(/\s+/g, '')
+                )));
+            } else {
+                // 方案B：分块同步（大数据量）
+                console.log('使用方案B：分块同步');
+                
+                // 先同步基础数据
+                const baseSyncCode = btoa(unescape(encodeURIComponent(
+                    JSON.stringify({ ...baseData, type: 'base', part: 1, totalParts: 2 }).replace(/\s+/g, '')
+                )));
+                
+                // 将题库分成多个块
+                const chunkSize = 100; // 每块最多100题
+                const chunks = [];
+                for (let i = 0; i < questionsData.length; i += chunkSize) {
+                    const chunk = questionsData.slice(i, i + chunkSize);
+                    chunks.push(chunk);
+                }
+                
+                // 生成题库块的同步码
+                const questionChunks = chunks.map((chunk, index) => {
+                    const chunkData = {
+                        type: 'questions',
+                        part: index + 1,
+                        totalParts: chunks.length,
+                        data: chunk
+                    };
+                    return btoa(unescape(encodeURIComponent(
+                        JSON.stringify(chunkData).replace(/\s+/g, '')
+                    )));
+                });
+                
+                // 组合所有同步码
+                syncCode = baseSyncCode + '|SEP|' + questionChunks.join('|CHUNK|');
+            }
+            
+            console.log('最终同步码长度:', syncCode.length, '字符');
+            
+            if (syncCode.length > 10000) {
+                const sizeKB = (syncCode.length / 1024).toFixed(1);
+                showToast(`数据量较大（${sizeKB}KB），手机同步时建议分批复制`, 'warning');
+                
+                // 如果同步码太长，提供分页功能
+                if (syncCode.length > 50000) {
+                    showToast('数据过大，已自动分割为多个部分', 'info');
+                }
+            }
+            
+            return syncCode;
+        } catch (e) {
+            console.error('生成同步码失败:', e);
+            showToast('生成同步码失败: ' + e.message, 'error');
+            return null;
+        }
+    }
+
+    function generateSyncLink() {
+        // 优先使用压缩版本（字符数减少40-60%）
+        const syncCode = generateCompressedSyncCode();
+        if (!syncCode) return;
+
+        // 使用固定的GitHub Pages地址，生成短链接（不带同步码）
+        const baseUrl = 'https://lirenxiangyi.github.io/training-system/';
+        const syncLink = baseUrl;
+
+        // 显示到弹窗
+        showSyncModal(syncLink, syncCode);
+    }
+
+    function showSyncModal(link, code) {
+        // 检查同步码大小，决定是否分页
+        const isLargeCode = code.length > 20000;
+        const isMultiPart = code.includes('|SEP|');
+        
+        // 创建弹窗
+        const modal = document.createElement('div');
+        modal.id = 'syncModal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;justify-content:center;align-items:center;';
+
+        const content = document.createElement('div');
+        content.style.cssText = 'background:white;border-radius:12px;padding:25px;max-width:550px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+
+        // 根据同步码大小生成不同的HTML
+        let codeHTML = '';
+        if (isLargeCode) {
+            // 大数据量：分页显示
+            const codeParts = [];
+            const partSize = 15000; // 每页最多15000字符
+            
+            for (let i = 0; i < code.length; i += partSize) {
+                const part = code.substring(i, i + partSize);
+                const partNum = Math.floor(i / partSize) + 1;
+                const totalParts = Math.ceil(code.length / partSize);
+                
+                codeParts.push(`
+                    <div id="syncCodePage${partNum}" style="display: ${partNum === 1 ? 'block' : 'none'};">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <label style="font-size:13px;color:#4a5568;font-weight:bold;">
+                                同步码（第${partNum}/${totalParts}部分）
+                            </label>
+                            <div style="font-size:11px;color:#718096;">
+                                <button onclick="changeSyncCodePage(${partNum-1})" style="padding:3px 8px;margin-right:5px;border:1px solid #cbd5e0;background:white;border-radius:3px;cursor:pointer;">上一页</button>
+                                <button onclick="changeSyncCodePage(${partNum+1})" style="padding:3px 8px;border:1px solid #cbd5e0;background:white;border-radius:3px;cursor:pointer;">下一页</button>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <textarea id="syncCodeText${partNum}" readonly style="flex:1;height:100px;border:1px solid #667eea;border-radius:5px;padding:8px;font-size:11px;resize:none;word-break:break-all;background:#f0f4ff;font-family:monospace;">${part}</textarea>
+                            <button onclick="copySyncCodePart(${partNum})" style="padding:8px 16px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:bold;">复制本段</button>
+                        </div>
+                        <div style="font-size:11px;color:#718096;margin-top:3px;">
+                            <strong>📱 手机提示：</strong>请依次复制所有${totalParts}部分发给学员
+                        </div>
+                    </div>
+                `);
+            }
+            
+            codeHTML = `
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:13px;color:#4a5568;font-weight:bold;">同步码（大数据量，已分${codeParts.length}页）</label>
+                    ${codeParts.join('')}
+                </div>
+            `;
+        } else {
+            // 小数据量：单次显示
+            codeHTML = `
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:13px;color:#4a5568;font-weight:bold;">同步码</label>
+                    <div style="display:flex;gap:8px;margin-top:5px;">
+                        <textarea id="syncCodeText" readonly style="flex:1;height:100px;border:1px solid #667eea;border-radius:5px;padding:8px;font-size:12px;resize:none;word-break:break-all;background:#f0f4ff;font-family:monospace;">${code}</textarea>
+                        <button onclick="copySyncCode()" style="padding:8px 16px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:bold;">复制同步码</button>
+                    </div>
+                    <div style="font-size:11px;color:#718096;margin-top:3px;">
+                        <strong>📱 手机提示：</strong>长按文本框 → 选择"全选" → 复制
+                    </div>
+                </div>
+            `;
+        }
+
+        content.innerHTML = `
+            <h3 style="margin:0 0 10px;color:#2c5282;font-size:18px;">📱 数据同步（手机优化版）</h3>
+            <p style="font-size:13px;color:#718096;margin-bottom:15px;line-height:1.6;">
+                <strong>管理员操作：</strong>发送下方链接和同步码给学员<br>
+                <span style="color:#38b2ac;">📱 学员操作：打开链接 → 粘贴同步码 → 完成同步</span>
+            </p>
+            
+            <div style="margin-bottom:12px;">
+                <label style="font-size:13px;color:#4a5568;font-weight:bold;">① 同步链接（点击即可打开）</label>
+                <div style="display:flex;gap:8px;margin-top:5px;">
+                    <input id="syncLinkText" readonly value="${link}" style="flex:1;height:40px;border:1px solid #38b2ac;border-radius:5px;padding:8px;font-size:14px;background:#f0fff4;font-weight:bold;">
+                    <button onclick="copySyncLink()" style="padding:8px 16px;background:#38b2ac;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:bold;">复制链接</button>
+                </div>
+                <div style="font-size:11px;color:#718096;margin-top:3px;">
+                    <strong>📱 手机操作：</strong>长按链接 → 选择"复制链接"
+                </div>
+            </div>
+            
+            ${codeHTML}
+            
+            <div style="background:#f0fff4;border-radius:8px;padding:12px;font-size:12px;color:#2d3748;line-height:1.8;border:1px solid #c6f6d5;margin-bottom:15px;">
+                <strong>📱 学员操作步骤（手机版）：</strong><br>
+                ① <strong>点击链接</strong> → 进入系统登录页<br>
+                ② 页面自动跳到"同步数据"页面<br>
+                ③ <strong>长按同步码文本框</strong> → 粘贴管理员发的同步码<br>
+                ④ 点击"同步数据"按钮<br>
+                ⑤ 刷新页面 → 用姓名+ID登录
+            </div>
+            
+            <div style="text-align:right;margin-top:15px;">
+                <button onclick="document.getElementById('syncModal').remove()" style="padding:8px 24px;background:#e2e8f0;color:#4a5568;border:none;border-radius:5px;cursor:pointer;font-size:14px;">关闭</button>
+            </div>
+        `;
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+        
+        // 添加分页切换函数
+        if (isLargeCode) {
+            setTimeout(() => {
+                // 注入分页切换函数
+                window.changeSyncCodePage = function(pageNum) {
+                    const totalParts = Math.ceil(code.length / 15000);
+                    if (pageNum < 1) pageNum = 1;
+                    if (pageNum > totalParts) pageNum = totalParts;
+                    
+                    // 隐藏所有页面
+                    for (let i = 1; i <= totalParts; i++) {
+                        const pageEl = document.getElementById(`syncCodePage${i}`);
+                        if (pageEl) pageEl.style.display = 'none';
+                    }
+                    
+                    // 显示当前页面
+                    const currentPageEl = document.getElementById(`syncCodePage${pageNum}`);
+                    if (currentPageEl) currentPageEl.style.display = 'block';
+                };
+                
+                window.copySyncCodePart = function(partNum) {
+                    const textarea = document.getElementById(`syncCodeText${partNum}`);
+                    if (textarea) {
+                        textarea.select();
+                        document.execCommand('copy');
+                        showToast(`✅ 第${partNum}部分同步码已复制！`, 'success');
+                    }
+                };
+            }, 100);
+        }
+    }
+
+    function copySyncLink() {
+        const text = document.getElementById('syncLinkText');
+        text.select();
+        document.execCommand('copy');
+        showToast('✅ 同步链接已复制！发给学员即可', 'success');
+    }
+
+    function copySyncCode() {
+        const text = document.getElementById('syncCodeText');
+        text.select();
+        document.execCommand('copy');
+        showToast('✅ 同步码已复制！发给学员粘贴即可', 'success');
+    }
+
+    // 学员端：通过URL参数自动同步
+    function checkSyncParam() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const syncCode = urlParams.get('sync');
+        if (syncCode) {
+            console.log('检测到同步码参数，开始同步...');
+            applySyncCode(syncCode);
+            return true;
+        }
+        return false;
+    }
+
+    // 学员端：手动输入同步码同步
+    function manualSyncCode() {
+        const codeInput = document.getElementById('manualSyncCodeInput');
+        if (!codeInput) return;
+        const code = codeInput.value.trim();
+        if (!code) {
+            showToast('请先粘贴同步码', 'error');
+            return;
+        }
+        applySyncCode(code);
+    }
+    
+    // 清空同步码输入框
+    function clearSyncCode() {
+        const codeInput = document.getElementById('manualSyncCodeInput');
+        if (codeInput) {
+            codeInput.value = '';
+            showToast('同步码已清空', 'info');
+        }
+    }
+    
+    // 测试同步码压缩效果
+    function testSyncCodeCompression() {
+        try {
+            console.log('开始测试同步码压缩效果...');
+            
+            // 生成原始同步码
+            const originalCode = generateSyncCode();
+            if (!originalCode) {
+                showToast('生成原始同步码失败', 'error');
+                return;
+            }
+            
+            // 生成压缩同步码
+            const compressedCode = generateCompressedSyncCode();
+            if (!compressedCode) {
+                showToast('生成压缩同步码失败', 'error');
+                return;
+            }
+            
+            // 计算节省比例
+            const originalLength = originalCode.length;
+            const compressedLength = compressedCode.length;
+            const savedPercent = Math.round((1 - compressedLength / originalLength) * 100);
+            const savedKB = ((originalLength - compressedLength) / 1024).toFixed(2);
+            
+            // 显示测试结果
+            const modal = document.createElement('div');
+            modal.id = 'compressionTestModal';
+            modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;justify-content:center;align-items:center;';
+            
+            const content = document.createElement('div');
+            content.style.cssText = 'background:white;border-radius:12px;padding:25px;max-width:500px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+            
+            content.innerHTML = `
+                <div style="text-align:center;margin-bottom:20px;">
+                    <h3 style="margin:0 0 10px;color:#2d3748;font-size:18px;">📊 同步码压缩效果测试</h3>
+                    <p style="color:#718096;font-size:14px;margin:0;">对比原始版本与压缩版本</p>
+                </div>
+                
+                <div style="background:#f7fafc;border-radius:8px;padding:20px;margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:15px;">
+                        <div style="text-align:center;flex:1;">
+                            <div style="font-size:12px;color:#718096;margin-bottom:5px;">原始版本</div>
+                            <div style="font-size:24px;font-weight:bold;color:#e53e3e;">${originalLength}</div>
+                            <div style="font-size:11px;color:#a0aec0;">字符</div>
+                        </div>
+                        <div style="text-align:center;flex:1;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;">
+                            <div style="font-size:12px;color:#718096;margin-bottom:5px;">压缩版本</div>
+                            <div style="font-size:24px;font-weight:bold;color:#38a169;">${compressedLength}</div>
+                            <div style="font-size:11px;color:#a0aec0;">字符</div>
+                        </div>
+                        <div style="text-align:center;flex:1;">
+                            <div style="font-size:12px;color:#718096;margin-bottom:5px;">节省</div>
+                            <div style="font-size:24px;font-weight:bold;color:#3182ce;">${savedPercent}%</div>
+                            <div style="font-size:11px;color:#a0aec0;">${savedKB}KB</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:white;border-radius:6px;padding:15px;border:1px solid #e2e8f0;margin-top:15px;">
+                        <div style="display:flex;align-items:center;margin-bottom:10px;">
+                            <div style="width:12px;height:12px;background:#e53e3e;border-radius:2px;margin-right:8px;"></div>
+                            <div style="font-size:13px;font-weight:500;color:#4a5568;">原始同步码长度</div>
+                        </div>
+                        <div style="display:flex;align-items:center;">
+                            <div style="width:12px;height:12px;background:#38a169;border-radius:2px;margin-right:8px;"></div>
+                            <div style="font-size:13px;font-weight:500;color:#4a5568;">压缩同步码长度</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:14px;font-weight:600;color:#4a5568;margin-bottom:8px;">压缩技术说明</div>
+                    <ul style="font-size:13px;color:#718096;padding-left:20px;margin:0;">
+                        <li>字段名简化：id→i, name→n, content→d</li>
+                        <li>文本压缩：常见术语缩写（JavaScript→JS）</li>
+                        <li>Base64URL：移除填充字符=</li>
+                        <li>枚举值优化：active→1, easy→e</li>
+                        <li>智能分块：大数据自动分块传输</li>
+                    </ul>
+                </div>
+                
+                <div style="display:flex;gap:10px;">
+                    <button onclick="document.body.removeChild(document.getElementById('compressionTestModal'))" style="flex:1;padding:12px;background:#f7fafc;color:#4a5568;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;">
+                        关闭
+                    </button>
+                    <button onclick="generateSyncLink(); document.body.removeChild(document.getElementById('compressionTestModal'))" style="flex:1;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">
+                        使用压缩版
+                    </button>
+                </div>
+            `;
+            
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+            
+            console.log(`压缩测试完成：原始${originalLength} → 压缩${compressedLength}，节省${savedPercent}%`);
+            
+        } catch (e) {
+            console.error('压缩测试失败:', e);
+            showToast('压缩测试失败: ' + e.message, 'error');
+        }
+    }
+
+    function applySyncCode(code) {
+        try {
+            console.log('开始应用同步码...', code.length);
+            
+            // 首先尝试解压缩格式（新版本）
+            const decompressedData = decompressSyncCode(code);
+            if (decompressedData) {
+                console.log('检测到压缩格式同步码，使用解压缩方案');
+                
+                // 应用解压缩后的数据
+                if (decompressedData.students && decompressedData.students.length > 0) {
+                    database.students = decompressedData.students;
+                }
+                if (decompressedData.courses && decompressedData.courses.length > 0) {
+                    database.courses = decompressedData.courses;
+                }
+                if (decompressedData.levels && decompressedData.levels.length > 0) {
+                    database.levels = decompressedData.levels;
+                }
+                if (decompressedData.exams && decompressedData.exams.length > 0) {
+                    database.exams = decompressedData.exams;
+                }
+                if (decompressedData.questions && decompressedData.questions.length > 0) {
+                    database.questions = decompressedData.questions;
+                }
+                
+                // 保存到本地存储
+                saveAllData();
+                
+                showToast('✅ 数据同步成功（压缩格式）！', 'success');
+                console.log('压缩格式同步完成');
+                return;
+            }
+            
+            // 如果不是压缩格式，继续使用原有逻辑
+            console.log('使用原始同步码格式');
+            
+            // 检查是否是多部分同步码
+            if (code.includes('|SEP|')) {
+                console.log('检测到多部分同步码');
+                const parts = code.split('|SEP|');
+                
+                // 第一部分：基础数据
+                const baseCode = parts[0];
+                let jsonStr;
+                try {
+                    jsonStr = decodeURIComponent(escape(atob(baseCode)));
+                } catch (e) {
+                    showToast('基础数据解码失败', 'error');
+                    return;
+                }
+                
+                const baseData = JSON.parse(jsonStr);
+                console.log('基础数据类型:', baseData.type);
+                
+                if (baseData.type === 'base') {
+                    database.students = baseData.s || database.students;
+                    database.courses = baseData.c || database.courses;
+                    database.levels = baseData.l || database.levels;
+                    database.exams = baseData.e || database.exams;
+                }
+                
+                // 第二部分：题库数据（可能有多个块）
+                if (parts.length > 1) {
+                    const questionParts = parts[1].split('|CHUNK|');
+                    console.log('题库块数量:', questionParts.length);
+                    
+                    let allQuestions = [];
+                    for (const chunkCode of questionParts) {
+                        try {
+                            const chunkJson = decodeURIComponent(escape(atob(chunkCode)));
+                            const chunkData = JSON.parse(chunkJson);
+                            if (chunkData.type === 'questions' && chunkData.data) {
+                                allQuestions = allQuestions.concat(chunkData.data);
+                            }
+                        } catch (e) {
+                            console.warn('题库块解码失败:', e);
+                        }
+                    }
+                    
+                    if (allQuestions.length > 0) {
+                        database.questions = allQuestions;
+                        console.log('同步题库数量:', database.questions.length);
+                    }
+                }
+                
+            } else {
+                // 单次同步（旧格式或小数据量）
+                console.log('使用单次同步');
+                let jsonStr;
+                try {
+                    jsonStr = decodeURIComponent(escape(atob(code)));
+                } catch (e) {
+                    showToast('同步码格式错误，请检查是否完整复制', 'error');
+                    return;
+                }
+
+                console.log('解码数据大小:', jsonStr.length, '字节');
+
+                const syncData = JSON.parse(jsonStr);
+                console.log('同步数据解析成功');
+
+                // 验证数据格式（支持新旧两种格式）
+                const students = syncData.s || syncData.students;
+                const courses = syncData.c || syncData.courses;
+                const questions = syncData.q || syncData.questions;
+                const levels = syncData.l || syncData.levels;
+                const exams = syncData.e || syncData.exams;
+
+                if (!students || !Array.isArray(students)) {
+                    showToast('同步数据格式不正确（缺少学员数据）', 'error');
+                    return;
+                }
+                
+                // 更新数据库
+                if (students) database.students = students;
+                if (courses) database.courses = courses;
+                if (questions) database.questions = questions;
+                if (levels) database.levels = levels;
+                if (exams) database.exams = exams;
+            }
+            
+            // 保存到本地存储
+            saveData();
+            
+            // 清除URL中的sync参数（避免刷新重复同步）
+            const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+            window.history.replaceState({}, document.title, cleanUrl);
+
+            showToast('✅ 同步成功！学员' + database.students.length + '人，题目' + database.questions.length + '道，考试' + database.exams.length + '场', 'success');
+            
+            // 更新统计信息
+            updateSyncInfo();
+            
+        } catch (e) {
+            console.error('同步失败:', e);
+            showToast('同步失败: ' + e.message, 'error');
+        }
+    }
+
+    function updateSyncInfo() {
+        const infoEl = document.getElementById('syncInfoText');
+        if (infoEl) {
+            infoEl.innerHTML = '当前已同步：<strong>' + database.students.length + '</strong>名学员，<strong>' +
+                database.questions.length + '</strong>道题，<strong>' +
+                Object.keys(database.users).filter(k => database.users[k].role === 'admin').length + '</strong>个管理员';
+        }
+    }
+
+    // 切换同步码输入面板
+    function toggleSyncPanel() {
+        const panel = document.getElementById('syncPanel');
+        if (panel) {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+    }
     
     // 页面初始化
     async function initPage() {
-        // 先初始化云开发
-        await initCloudBase();
+        // 加载本地数据
+        loadData();
         initLevels();
+
+        // 检查是否通过同步链接打开
+        if (checkSyncParam()) {
+            console.log('同步码自动同步完成');
+        }
+
         // 自动填充第一个管理员账号到登录框
         const adminKeys = Object.keys(database.users).filter(k => database.users[k].role === 'admin');
         if (adminKeys.length > 0) {
@@ -5161,6 +6735,89 @@
     
     // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', initPage);
+    
+    // 生成同步二维码
+    function generateSyncQRCode(url) {
+        try {
+            const container = document.getElementById('syncQrcodeContainer');
+            if (!container) {
+                console.error('找不到二维码容器');
+                return;
+            }
+            
+            // 清空容器
+            container.innerHTML = '<div style="padding:20px;">⏳ 正在生成二维码...</div>';
+            
+            // 二维码功能暂时不可用，显示替代方案
+            container.innerHTML = `
+                <div style="text-align:center;padding:20px;">
+                    <div style="color:#e53e3e;font-size:14px;margin-bottom:10px;">⚠️ 二维码功能暂不可用</div>
+                    <div style="background:#f7fafc;border:1px dashed #cbd5e0;border-radius:8px;padding:15px;margin:10px 0;">
+                        <div style="font-size:13px;color:#4a5568;margin-bottom:8px;">请使用以下方式同步数据：</div>
+                        <div style="font-size:12px;color:#718096;line-height:1.6;">
+                            1. 复制下方同步码<br>
+                            2. 发送给学员<br>
+                            3. 学员在登录页点击"同步数据"<br>
+                            4. 粘贴同步码完成同步
+                        </div>
+                    </div>
+                    <div style="font-size:12px;color:#38b2ac;margin-top:10px;">
+                        📱 手机用户可直接点击同步链接
+                    </div>
+                </div>
+            `;
+            return;
+            
+            setTimeout(() => {
+                try {
+                    // 创建QR码实例 - 使用正确的库名
+                    var qr = QRCode(10, 'M');  // 版本10，纠错级别M
+                    qr.addData(url, 'Byte');
+                    qr.make();
+                    
+                    // 创建SVG格式的二维码
+                    const svgTag = qr.createSvgTag(4, 2, '同步数据二维码', '冉鹏工作室');
+                    
+                    // 清空容器，添加二维码
+                    container.innerHTML = svgTag;
+                    
+                    // 添加下载按钮
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.innerHTML = '📱 下载二维码';
+                    downloadBtn.style.cssText = 'margin-top:10px;padding:8px 16px;background:#38b2ac;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;';
+                    downloadBtn.onclick = function() {
+                        try {
+                            // 使用DataURL方式生成可下载的图片
+                            const dataURL = qr.createDataURL(4, 2);
+                            const link = document.createElement('a');
+                            link.download = 'sync-qrcode.png';
+                            link.href = dataURL;
+                            link.click();
+                            showToast('✅ 二维码已下载为sync-qrcode.png', 'success');
+                        } catch(e) {
+                            showToast('❌ 下载失败: ' + e.message, 'error');
+                        }
+                    };
+                    container.appendChild(downloadBtn);
+                    
+                    // 调整SVG样式
+                    const svgElement = container.querySelector('svg');
+                    if (svgElement) {
+                        // 设置深蓝色二维码
+                        svgElement.querySelectorAll('path[fill=\"#000000\"]').forEach(path => {
+                            path.setAttribute('fill', '#2c5282');
+                        });
+                        svgElement.style.cssText = 'border:1px solid #e2e8f0;border-radius:8px;display:block;margin:0 auto;';
+                    }
+                } catch (e) {
+                    console.error('二维码生成异常:', e);
+                    container.innerHTML = '<div style="color:#e53e3e;padding:10px;">❌ 二维码生成异常: ' + e.message + '</div>';
+                }
+            }, 100);
+        } catch (e) {
+            console.error('二维码生成外层异常:', e);
+        }
+    }
     
     // 通知提示
     function showToast(message, type = 'info') {

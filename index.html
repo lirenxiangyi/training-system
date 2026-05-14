@@ -22,26 +22,14 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.12.4 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.13.0 - LOADED AT ' + new Date().toISOString());
     
-    // 页面加载时检查：如果是通过短链接打开的，自动切换到同步数据tab
+    // 页面加载时检查：快速同步链接（?s=）会自动处理，无需切换tab
     window.addEventListener('DOMContentLoaded', function() {
-        // 检查是否是通过短链接打开的（没有sync参数）
-        const urlParams = new URLSearchParams(window.location.search);
-        const hasSyncParam = urlParams.has('sync');
-        
-        if (!hasSyncParam && window.location.href.includes('training-system')) {
-            // 短链接打开，自动切换到同步数据tab
-            setTimeout(() => {
-                const syncTab = document.querySelector('.login-tab[onclick*="switchLoginTab(\'sync\'"]');
-                if (syncTab) {
-                    syncTab.click();
-                }
-            }, 200);
-        }
+        // 不再自动切换到同步tab，快速同步链接会自动在后台完成
     });
     </script>
-    <title>冉鹏工作室培训管理系统 v2.12.4</title>
+    <title>冉鹏工作室培训管理系统 v2.13.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -834,6 +822,7 @@
     </style>
     <!-- v2.11.0: 使用本地存储 + 同步码方案，无需云SDK -->
     <!-- v2.12.4: 同步码极致压缩（减少40-60%字符数） + 向后兼容 -->
+    <!-- v2.13.0: 学员快速同步链接（一键同步，无需手动粘贴同步码） -->
 </head>
 <body>
 
@@ -841,7 +830,7 @@
 <div id="loginPage" class="login-container">
     <div class="login-card">
         <h1>冉鹏工作室</h1>
-        <p>培训管理系统 v2.12.4</p>
+        <p>培训管理系统 v2.13.0</p>
         
         <div class="login-tabs">
             <button class="login-tab active" onclick="switchLoginTab('admin', this)">管理员登陆</button>
@@ -1525,33 +1514,33 @@
 
                 <!-- 数据同步码（v2.12.4 极致压缩版） -->
                 <div style="background:linear-gradient(135deg,#ebf4ff,#e9d8fd);border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:2px solid #667eea;">
-                    <h3 style="margin:0 0 10px;font-size:15px;color:#553c9a;">🔗 数据同步码（压缩版）</h3>
+                    <h3 style="margin:0 0 10px;font-size:15px;color:#553c9a;">🔗 数据同步</h3>
+
+                    <!-- v2.13.0: 快速同步链接（推荐） -->
+                    <div style="background:linear-gradient(135deg,#f0fff4,#e6fffa);border-radius:8px;padding:15px;margin-bottom:15px;border:2px solid #48bb78;">
+                        <p style="font-size:14px;color:#276749;margin:0 0 8px;font-weight:bold;">🚀 学员同步链接（推荐 · 一键版）</p>
+                        <p style="font-size:12px;color:#4a5568;margin:0 0 10px;">学员点击链接自动同步，<strong>无需手动粘贴</strong>！只含登录数据，链接很短。</p>
+                        <button class="btn" onclick="generateQuickSyncLink()" style="width:100%;padding:12px;background:linear-gradient(135deg,#48bb78,#38a169);color:white;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(72,187,120,0.4);">
+                            📱 生成学员同步链接
+                        </button>
+                    </div>
+
                     <p style="font-size:13px;color:#553c9a;margin-bottom:12px;">
-                        生成<strong>压缩版</strong>同步码，字符数减少40-60%，手机操作更方便！<br>
-                        <strong>自动兼容旧格式，学员无需更新</strong>
+                        下方为<strong>完整同步码</strong>（含题库），适用于首次部署或题库更新。
                     </p>
                     <button class="btn" onclick="generateSyncLink()" style="width:100%;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(102,126,234,0.4);">
-                        🚀 生成压缩同步码（减少40-60%）
+                        📦 生成完整同步码（含题库）
                     </button>
                     <button class="btn" onclick="testSyncCodeCompression()" style="width:100%;padding:10px;margin-top:10px;background:#f7fafc;color:#4a5568;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;cursor:pointer;">
                         📊 测试压缩效果
                     </button>
-                    <div style="margin-top:10px;font-size:11px;color:#718096;line-height:1.8;">
-                        <p>📋 使用流程：</p>
-                        <ol style="padding-left:18px;margin:0;">
-                            <li>点击上方按钮，生成<strong>压缩版同步码</strong></li>
-                            <li>复制<strong>短链接+压缩同步码</strong>发给学员</li>
-                            <li>学员打开短链接，粘贴同步码完成同步</li>
-                            <li><strong>自动兼容</strong>旧格式，学员无需更新</li>
-                        </ol>
-                    </div>
                 </div>
                 
                 <!-- 系统信息 -->
                 <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
                     <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">ℹ️ 系统信息</h3>
                     <div style="font-size:13px;color:#4a5568;line-height:2;">
-                        <p>系统版本：<strong>v2.12.4</strong></p>
+                        <p>系统版本：<strong>v2.13.0</strong></p>
                         <p>数据模式：<span style="font-weight:bold;color:#2c5282;">💾 本地存储 + 同步码</span></p>
                         <p>学员数量：<span id="infoStudentCount">0</span></p>
                         <p>课程数量：<span id="infoCourseCount">0</span></p>
@@ -2159,7 +2148,7 @@
                 detail = '（姓名匹配但ID不匹配，库中ID：' + nameMatch.id + '）';
             }
             console.log('[登录调试] 匹配失败', detail);
-            showToast('学员信息不匹配' + detail, 'error');
+            showToast('学员信息不匹配' + detail + '（请联系管理员获取同步链接）', 'error');
         }
     }
     
@@ -5894,7 +5883,7 @@
                     qc: e.questionCount,
                     tl: e.timeLimit
                 })),
-                v: 'v2.12.4z',                       // 标记为压缩版本
+                v: 'v2.13.0z',                       // 标记为压缩版本
                 t: new Date().toISOString().split('T')[0] // 只保留日期：2026-04-09
             };
             
@@ -6252,6 +6241,138 @@
             console.error('生成同步码失败:', e);
             showToast('生成同步码失败: ' + e.message, 'error');
             return null;
+        }
+    }
+
+    // ==================== v2.13.0: 学员快速同步链接 ====================
+    // 原理：只同步学员登录数据（id+name），压缩后放入URL参数，学员点链接即自动同步
+    function generateQuickSyncLink() {
+        try {
+            if (!database.students || database.students.length === 0) {
+                showToast('没有学员数据，无法生成同步链接', 'error');
+                return;
+            }
+
+            // 只提取学员登录所需的最少数据：id + name
+            const studentList = database.students.map(s => ({
+                i: s.id.trim(),
+                n: s.name.trim()
+            }));
+
+            // 紧凑JSON + Base64URL编码
+            const jsonStr = JSON.stringify(studentList);
+            const utf8Str = unescape(encodeURIComponent(jsonStr));
+            const b64 = btoa(utf8Str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+            console.log('[快速同步] 学员数:', studentList.length, '编码长度:', b64.length);
+
+            // URL参数 ?s=xxx
+            const syncUrl = 'https://lirenxiangyi.github.io/training-system/?s=' + b64;
+
+            // 弹窗显示
+            const modal = document.createElement('div');
+            modal.id = 'quickSyncModal';
+            modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;justify-content:center;align-items:center;';
+            modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+
+            const content = document.createElement('div');
+            content.style.cssText = 'background:white;border-radius:12px;padding:25px;max-width:500px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+            content.innerHTML = `
+                <h3 style="margin:0 0 10px;color:#276749;font-size:17px;">🔗 学员同步链接（一键版）</h3>
+                <p style="font-size:13px;color:#4a5568;margin-bottom:15px;line-height:1.6;">
+                    只同步学员登录信息（${studentList.length}人），不含题库。<br>
+                    <strong style="color:#38a169;">学员点击链接即可自动同步，无需手动操作！</strong>
+                </p>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:13px;color:#4a5568;font-weight:bold;">📱 发送此链接给学员：</label>
+                    <div style="display:flex;gap:8px;margin-top:5px;">
+                        <input id="quickSyncUrl" readonly value="${syncUrl}" style="flex:1;height:40px;border:2px solid #48bb78;border-radius:5px;padding:8px;font-size:13px;background:#f0fff4;font-family:monospace;word-break:break-all;">
+                        <button onclick="document.getElementById('quickSyncUrl').select();document.execCommand('copy');this.textContent='已复制!';setTimeout(()=>this.textContent='复制',1500)" style="padding:8px 16px;background:#48bb78;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:bold;">复制</button>
+                    </div>
+                </div>
+                <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:12px;font-size:12px;color:#2d3748;line-height:1.8;margin-bottom:15px;">
+                    <strong>📋 使用方法：</strong><br>
+                    ① 管理员复制上方链接<br>
+                    ② 通过微信/QQ发给学员<br>
+                    ③ 学员点击链接 → 自动同步 → 直接登录<br>
+                    <span style="color:#e53e3e;">⚠️ 注意：不含题库数据，学员首次需另外同步题库</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="document.getElementById('quickSyncModal').remove()" style="flex:1;padding:10px;background:#e2e8f0;color:#4a5568;border:none;border-radius:5px;cursor:pointer;font-size:14px;">关闭</button>
+                </div>
+            `;
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+
+        } catch (e) {
+            console.error('生成快速同步链接失败:', e);
+            showToast('生成失败: ' + e.message, 'error');
+        }
+    }
+
+    // 学员端：检测 ?s= 参数并自动同步学员登录数据
+    function checkQuickSyncParam() {
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const syncData = urlParams.get('s');
+            if (!syncData) return false;
+
+            // Base64URL解码
+            let b64 = syncData.replace(/-/g, '+').replace(/_/g, '/');
+            const pad = b64.length % 4;
+            if (pad) b64 += '='.repeat(4 - pad);
+
+            const jsonStr = decodeURIComponent(escape(atob(b64)));
+            const studentList = JSON.parse(jsonStr);
+
+            if (!Array.isArray(studentList) || studentList.length === 0) {
+                console.warn('[快速同步] 数据为空或格式错误');
+                return false;
+            }
+
+            // 合并学员数据（不覆盖已有数据，只添加新的）
+            let addedCount = 0;
+            studentList.forEach(s => {
+                const id = s.i || s.id;
+                const name = s.n || s.name;
+                if (id && name) {
+                    const exists = database.students.find(existing => existing.id.trim() === id);
+                    if (!exists) {
+                        database.students.push({
+                            id: id,
+                            name: name,
+                            phone: '',
+                            course: '',
+                            status: 'active'
+                        });
+                        addedCount++;
+                    }
+                }
+            });
+
+            saveData();
+
+            // 清除URL参数
+            const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+            window.history.replaceState({}, document.title, cleanUrl);
+
+            if (addedCount > 0) {
+                showToast('✅ 自动同步成功！新增' + addedCount + '名学员，请登录', 'success');
+            } else {
+                showToast('✅ 学员数据已是最新，请直接登录', 'success');
+            }
+            console.log('[快速同步] 完成，新增学员:', addedCount);
+
+            // 自动切换到学员登录tab
+            setTimeout(() => {
+                const studentTab = document.querySelector('.login-tab[onclick*="switchLoginTab(\'student\'"]');
+                if (studentTab) studentTab.click();
+            }, 1500);
+
+            return true;
+        } catch (e) {
+            console.error('[快速同步] 失败:', e);
+            return false;
         }
     }
 
@@ -6719,8 +6840,12 @@
         loadData();
         initLevels();
 
-        // 检查是否通过同步链接打开
-        if (checkSyncParam()) {
+        // v2.13.0: 优先检测快速同步链接（?s=参数，学员点链接自动同步）
+        if (checkQuickSyncParam()) {
+            console.log('快速同步完成，已自动更新学员数据');
+        }
+        // 再检查旧的sync参数（完整数据同步）
+        else if (checkSyncParam()) {
             console.log('同步码自动同步完成');
         }
 

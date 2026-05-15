@@ -22,14 +22,14 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.13.0 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.14.0 - LOADED AT ' + new Date().toISOString());
     
     // 页面加载时检查：快速同步链接（?s=）会自动处理，无需切换tab
     window.addEventListener('DOMContentLoaded', function() {
         // 不再自动切换到同步tab，快速同步链接会自动在后台完成
     });
     </script>
-    <title>冉鹏工作室培训管理系统 v2.13.0</title>
+    <title>冉鹏工作室培训管理系统 v2.14.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -823,6 +823,8 @@
     <!-- v2.11.0: 使用本地存储 + 同步码方案，无需云SDK -->
     <!-- v2.12.4: 同步码极致压缩（减少40-60%字符数） + 向后兼容 -->
     <!-- v2.13.0: 学员快速同步链接（一键同步，无需手动粘贴同步码） -->
+    <!-- v2.14.0: GitHub Gist 云端同步（管理员一键上传，学员一键同步） -->
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </head>
 <body>
 
@@ -830,7 +832,7 @@
 <div id="loginPage" class="login-container">
     <div class="login-card">
         <h1>冉鹏工作室</h1>
-        <p>培训管理系统 v2.13.0</p>
+        <p>培训管理系统 v2.14.0</p>
         
         <div class="login-tabs">
             <button class="login-tab active" onclick="switchLoginTab('admin', this)">管理员登陆</button>
@@ -863,7 +865,23 @@
             <div id="syncPanel" style="display:none;margin-bottom:15px;">
                 <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:15px;">
                     <p style="font-size:13px;color:#276749;margin:0 0 10px;line-height:1.5;">
-                        <strong>📱 数据同步（手机版）</strong><br>
+                        <strong>📱 数据同步</strong>
+                    </p>
+
+                    <!-- v2.14.0: 云端同步（推荐） -->
+                    <div style="background:linear-gradient(135deg,#ebf8ff,#e9d8fd);border:1px solid #90cdf4;border-radius:8px;padding:12px;margin-bottom:12px;">
+                        <p style="font-size:13px;color:#2b6cb0;margin:0 0 8px;font-weight:bold;">☁️ 云端同步（推荐）</p>
+                        <p style="font-size:11px;color:#4a5568;margin:0 0 8px;">管理员上传数据到云端后，输入 Gist ID 一键同步</p>
+                        <div style="display:flex;gap:6px;">
+                            <input id="studentGistIdInput" placeholder="粘贴 Gist ID（如 abc123def456）" style="flex:1;height:36px;border:1px solid #90cdf4;border-radius:5px;padding:0 8px;font-size:12px;box-sizing:border-box;">
+                            <button onclick="studentCloudSync()" style="padding:0 14px;background:#4299e1;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:bold;white-space:nowrap;">同步</button>
+                        </div>
+                        <div id="studentCloudSyncStatus" style="font-size:11px;color:#718096;margin-top:6px;text-align:center;"></div>
+                    </div>
+
+                    <div style="text-align:center;color:#a0aec0;font-size:11px;margin-bottom:10px;">—— 或使用手动同步码 ——</div>
+
+                    <p style="font-size:12px;color:#4a5568;margin:0 0 10px;line-height:1.5;">
                         如果提示"找不到学员"，请按以下步骤操作：
                     </p>
                     
@@ -1512,6 +1530,50 @@
                     <input type="file" id="importBackupFile" style="display:none" accept=".json" onchange="importFullBackup()">
                 </div>
 
+                <!-- v2.14.0: GitHub Gist 云端同步 -->
+                <div id="cloudSyncPanel" style="background:linear-gradient(135deg,#ebf8ff,#e9d8fd);border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:2px solid #4299e1;margin-bottom:15px;">
+                    <h3 style="margin:0 0 10px;font-size:15px;color:#2b6cb0;">☁️ 云端同步（v2.14.0 新增）</h3>
+                    <p style="font-size:12px;color:#4a5568;margin:0 0 12px;">管理员上传数据到 GitHub Gist，学员一键同步，<strong>告别15页同步码</strong>！</p>
+
+                    <!-- Token 配置 -->
+                    <div style="background:white;border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid #bee3f8;">
+                        <label style="font-size:12px;color:#2b6cb0;font-weight:bold;">🔑 GitHub Token（仅管理员需要）</label>
+                        <div style="display:flex;gap:6px;margin-top:6px;">
+                            <input id="gistTokenInput" type="password" placeholder="粘贴你的 GitHub Personal Access Token..." style="flex:1;height:36px;border:1px solid #bee3f8;border-radius:5px;padding:0 8px;font-size:12px;box-sizing:border-box;">
+                            <button onclick="saveGistToken()" style="padding:0 12px;background:#4299e1;color:white;border:none;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap;">保存</button>
+                        </div>
+                        <div id="gistTokenStatus" style="font-size:11px;color:#718096;margin-top:4px;"></div>
+                    </div>
+
+                    <!-- Gist 信息 -->
+                    <div id="gistInfoArea" style="background:white;border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid #bee3f8;display:none;">
+                        <div style="font-size:12px;color:#2d3748;line-height:1.8;">
+                            <span>Gist ID：<strong id="gistIdDisplay"></strong></span>
+                            <button onclick="copyGistId()" style="margin-left:5px;padding:2px 6px;background:#e2e8f0;border:none;border-radius:3px;cursor:pointer;font-size:10px;">复制</button><br>
+                            <span>上次上传：<strong id="gistLastUpload"></strong></span><br>
+                            <span>学员数：<strong id="gistStudentCount">0</strong> | 题库数：<strong id="gistQuestionCount">0</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <button onclick="gistUpload()" style="width:100%;padding:12px;background:linear-gradient(135deg,#4299e1,#3182ce);color:white;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(66,153,225,0.4);">
+                            ☁️ 上传数据到云端
+                        </button>
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="generateCloudSyncLink()" id="genCloudLinkBtn" style="flex:1;padding:10px;background:linear-gradient(135deg,#48bb78,#38a169);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;opacity:0.5;pointer-events:none;">
+                                📱 生成云端同步链接
+                            </button>
+                            <button onclick="gistClearConfig()" style="padding:10px 14px;background:#fed7d7;color:#e53e3e;border:none;border-radius:8px;font-size:13px;cursor:pointer;">
+                                清除配置
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 上传状态 -->
+                    <div id="gistUploadStatus" style="font-size:11px;color:#718096;margin-top:8px;text-align:center;"></div>
+                </div>
+
                 <!-- 数据同步码（v2.12.4 极致压缩版） -->
                 <div style="background:linear-gradient(135deg,#ebf4ff,#e9d8fd);border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:2px solid #667eea;">
                     <h3 style="margin:0 0 10px;font-size:15px;color:#553c9a;">🔗 数据同步</h3>
@@ -1540,8 +1602,8 @@
                 <div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
                     <h3 style="margin:0 0 15px;font-size:15px;color:#2c5282;">ℹ️ 系统信息</h3>
                     <div style="font-size:13px;color:#4a5568;line-height:2;">
-                        <p>系统版本：<strong>v2.13.0</strong></p>
-                        <p>数据模式：<span style="font-weight:bold;color:#2c5282;">💾 本地存储 + 同步码</span></p>
+                        <p>系统版本：<strong>v2.14.0</strong></p>
+                        <p>数据模式：<span style="font-weight:bold;color:#2c5282;">💾 本地存储 + ☁️ 云端同步</span></p>
                         <p>学员数量：<span id="infoStudentCount">0</span></p>
                         <p>课程数量：<span id="infoCourseCount">0</span></p>
                         <p>考试数量：<span id="infoExamCount">0</span></p>
@@ -5818,6 +5880,330 @@
     // 数据持久化
     const STORAGE_KEY = 'training_management_db';
 
+    // ==================== v2.14.0: GitHub Gist 云端同步 ====================
+    // 管理员上传数据到 Gist，学员通过 Gist ID 一键同步
+
+    const GIST_CONFIG_KEY = 'training_gist_config';  // 存储 Token 和 Gist ID
+    const GIST_API = 'https://api.github.com/gists';
+    const BASE_URL = 'https://lirenxiangyi.github.io/training-system/';
+
+    // ---------- 配置管理 ----------
+
+    function saveGistToken() {
+        const token = document.getElementById('gistTokenInput').value.trim();
+        if (!token) {
+            showToast('请输入 GitHub Token', 'error');
+            return;
+        }
+        const config = loadGistConfig();
+        config.token = token;
+        localStorage.setItem(GIST_CONFIG_KEY, JSON.stringify(config));
+        showToast('Token 已保存', 'success');
+        updateGistUI();
+    }
+
+    function loadGistConfig() {
+        try {
+            const saved = localStorage.getItem(GIST_CONFIG_KEY);
+            return saved ? JSON.parse(saved) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function gistClearConfig() {
+        if (!confirm('确定要清除云端同步配置（Token + Gist ID）吗？')) return;
+        localStorage.removeItem(GIST_CONFIG_KEY);
+        showToast('云端同步配置已清除', 'success');
+        updateGistUI();
+    }
+
+    // ---------- UI 状态更新 ----------
+
+    function updateGistUI() {
+        const config = loadGistConfig();
+        const tokenStatus = document.getElementById('gistTokenStatus');
+        const infoArea = document.getElementById('gistInfoArea');
+        const tokenInput = document.getElementById('gistTokenInput');
+        const linkBtn = document.getElementById('genCloudLinkBtn');
+
+        if (!tokenStatus) return;  // 学员端没有这些元素
+
+        // Token 状态
+        if (config.token) {
+            tokenStatus.innerHTML = '<span style="color:#38a169;">✅ Token 已配置</span>';
+            tokenInput.value = '••••••••';
+        } else {
+            tokenStatus.innerHTML = '<span style="color:#e53e3e;">❌ 未配置 Token</span>';
+            tokenInput.value = '';
+        }
+
+        // Gist 信息
+        if (config.gistId && config.lastUpload) {
+            infoArea.style.display = 'block';
+            document.getElementById('gistIdDisplay').textContent = config.gistId;
+            document.getElementById('gistLastUpload').textContent = config.lastUpload;
+            document.getElementById('gistStudentCount').textContent = (database.students || []).length;
+            document.getElementById('gistQuestionCount').textContent = (database.questions || []).length;
+            // 启用链接按钮
+            linkBtn.style.opacity = '1';
+            linkBtn.style.pointerEvents = 'auto';
+        } else {
+            infoArea.style.display = 'none';
+            linkBtn.style.opacity = '0.5';
+            linkBtn.style.pointerEvents = 'none';
+        }
+    }
+
+    function copyGistId() {
+        const config = loadGistConfig();
+        if (config.gistId) {
+            navigator.clipboard.writeText(config.gistId).then(() => showToast('Gist ID 已复制', 'success'));
+        }
+    }
+
+    // ---------- 数据压缩（pako gzip） ----------
+
+    function compressData(data) {
+        const jsonStr = JSON.stringify(data);
+        const uint8 = new TextEncoder().encode(jsonStr);
+        const compressed = pako.gzip(uint8);
+        // 转为 base64
+        let binary = '';
+        for (let i = 0; i < compressed.length; i++) {
+            binary += String.fromCharCode(compressed[i]);
+        }
+        return btoa(binary);
+    }
+
+    function decompressData(base64Str) {
+        const binary = atob(base64Str);
+        const uint8 = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            uint8[i] = binary.charCodeAt(i);
+        }
+        const decompressed = pako.ungzip(uint8);
+        const jsonStr = new TextDecoder().decode(decompressed);
+        return JSON.parse(jsonStr);
+    }
+
+    // ---------- 管理员：上传到 Gist ----------
+
+    async function gistUpload() {
+        const config = loadGistConfig();
+        if (!config.token) {
+            showToast('请先配置 GitHub Token', 'error');
+            return;
+        }
+
+        const statusEl = document.getElementById('gistUploadStatus');
+        statusEl.textContent = '⏳ 正在压缩数据并上传...';
+        statusEl.style.color = '#4299e1';
+
+        try {
+            // 压缩数据
+            const compressedBase64 = compressData(database);
+            const now = new Date();
+            const timestamp = now.toLocaleString('zh-CN');
+
+            const gistData = {
+                description: '📚 培训管理系统数据 - ' + now.toISOString().split('T')[0] +
+                    ' | 学员:' + (database.students || []).length +
+                    ' 题库:' + (database.questions || []).length +
+                    ' 考试:' + (database.exams || []).length,
+                public: true,
+                files: {
+                    'training_data.json.gz.b64': {
+                        content: compressedBase64
+                    },
+                    'README.md': {
+                        content: '# 培训管理系统数据\n\n上传时间：' + timestamp +
+                            '\n学员数量：' + (database.students || []).length +
+                            '\n题库数量：' + (database.questions || []).length +
+                            '\n\n> ⚠️ 请勿手动修改此文件'
+                    }
+                }
+            };
+
+            let gistId = config.gistId;
+            let response;
+
+            if (gistId) {
+                // 更新已有 Gist
+                response = await fetch(GIST_API + '/' + gistId, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': 'Bearer ' + config.token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(gistData)
+                });
+            } else {
+                // 创建新 Gist
+                response = await fetch(GIST_API, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + config.token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(gistData)
+                });
+            }
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.message || 'HTTP ' + response.status);
+            }
+
+            const gist = await response.json();
+            gistId = gist.id;
+
+            // 保存配置
+            config.gistId = gistId;
+            config.lastUpload = timestamp;
+            localStorage.setItem(GIST_CONFIG_KEY, JSON.stringify(config));
+
+            statusEl.textContent = '✅ 上传成功！Gist ID: ' + gistId;
+            statusEl.style.color = '#38a169';
+
+            showToast('☁️ 数据已上传到云端！', 'success');
+            updateGistUI();
+
+        } catch (e) {
+            console.error('[云端同步] 上传失败:', e);
+            statusEl.textContent = '❌ 上传失败: ' + e.message;
+            statusEl.style.color = '#e53e3e';
+            showToast('上传失败: ' + e.message, 'error');
+        }
+    }
+
+    // ---------- 管理员：生成云端同步链接 ----------
+
+    function generateCloudSyncLink() {
+        const config = loadGistConfig();
+        if (!config.gistId) {
+            showToast('请先上传数据到云端', 'error');
+            return;
+        }
+        const syncUrl = BASE_URL + '?g=' + config.gistId;
+
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;justify-content:center;align-items:center;';
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+
+        const content = document.createElement('div');
+        content.style.cssText = 'background:white;border-radius:12px;padding:25px;max-width:500px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+        content.innerHTML = `
+            <h3 style="margin:0 0 10px;color:#2b6cb0;font-size:17px;">☁️ 云端同步链接</h3>
+            <p style="font-size:13px;color:#4a5568;margin:0 0 12px;">将此链接发送给学员，点击即可自动同步所有数据（含题库）。</p>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <input id="cloudSyncUrlInput" readonly value="${syncUrl}" style="flex:1;height:40px;border:2px solid #4299e1;border-radius:5px;padding:8px;font-size:13px;background:#ebf8ff;font-family:monospace;word-break:break-all;">
+                <button onclick="document.getElementById('cloudSyncUrlInput').select();navigator.clipboard.writeText(document.getElementById('cloudSyncUrlInput').value);this.textContent='已复制!';setTimeout(()=>this.textContent='复制',1500)" style="padding:8px 16px;background:#4299e1;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:bold;">复制</button>
+            </div>
+            <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:12px;font-size:12px;color:#2d3748;line-height:1.8;">
+                <strong>📋 使用方法：</strong><br>
+                ① 管理员复制上方链接<br>
+                ② 通过微信/QQ发给学员<br>
+                ③ 学员点击链接 → 自动同步 → 直接登录<br>
+                <span style="color:#38a169;">✅ 含题库数据，无需手动粘贴同步码！</span>
+            </div>
+            <div style="text-align:right;margin-top:15px;">
+                <button onclick="this.closest('div[style]').parentElement.remove()" style="padding:8px 24px;background:#e2e8f0;color:#4a5568;border:none;border-radius:5px;cursor:pointer;font-size:14px;">关闭</button>
+            </div>
+        `;
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+    }
+
+    // ---------- 学员端：从 Gist 同步 ----------
+
+    async function gistDownload(gistId) {
+        const response = await fetch(GIST_API + '/' + gistId);
+        if (!response.ok) throw new Error('Gist 不存在或无法访问（HTTP ' + response.status + '）');
+
+        const gist = await response.json();
+        const file = gist.files['training_data.json.gz.b64'];
+        if (!file) throw new Error('Gist 中未找到数据文件');
+
+        return file.content;
+    }
+
+    async function applyCloudData(base64Content) {
+        const data = decompressData(base64Content);
+
+        // 验证数据格式
+        if (!data.students || !Array.isArray(data.students)) {
+            throw new Error('数据格式不正确（缺少学员数据）');
+        }
+
+        // 覆盖本地数据
+        Object.keys(data).forEach(key => {
+            database[key] = data[key];
+        });
+
+        saveData();
+        showToast('✅ 云端同步成功！共 ' + data.students.length + ' 名学员，' + (data.questions || []).length + ' 道题目', 'success');
+
+        return data;
+    }
+
+    async function studentCloudSync() {
+        const gistId = document.getElementById('studentGistIdInput').value.trim();
+        if (!gistId) {
+            showToast('请输入 Gist ID', 'error');
+            return;
+        }
+
+        const statusEl = document.getElementById('studentCloudSyncStatus');
+        statusEl.textContent = '⏳ 正在从云端同步数据...';
+        statusEl.style.color = '#4299e1';
+
+        try {
+            const content = await gistDownload(gistId);
+            await applyCloudData(content);
+            statusEl.textContent = '✅ 同步成功！请刷新页面后登录';
+            statusEl.style.color = '#38a169';
+        } catch (e) {
+            console.error('[云端同步] 下载失败:', e);
+            statusEl.textContent = '❌ 同步失败: ' + e.message;
+            statusEl.style.color = '#e53e3e';
+            showToast('同步失败: ' + e.message, 'error');
+        }
+    }
+
+    // ---------- 学员端：自动检测 ?g= 参数 ----------
+
+    async function checkGistParam() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const gistId = params.get('g');
+            if (!gistId) return false;
+
+            console.log('[云端同步] 检测到 Gist 参数:', gistId);
+            showToast('⏳ 正在从云端同步数据...', 'info');
+
+            const content = await gistDownload(gistId);
+            const data = await applyCloudData(content);
+
+            // 清除 URL 参数
+            const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+            window.history.replaceState({}, document.title, cleanUrl);
+
+            // 自动切换到学员登录
+            setTimeout(() => {
+                const studentTab = document.querySelector('.login-tab[onclick*="switchLoginTab(\'student\'"]');
+                if (studentTab) studentTab.click();
+                showToast('✅ 云端同步完成！共 ' + data.students.length + ' 名学员，请登录', 'success');
+            }, 1000);
+
+            return true;
+        } catch (e) {
+            console.error('[云端同步] 自动同步失败:', e);
+            showToast('云端同步失败: ' + e.message, 'error');
+            return false;
+        }
+    }
+
     // ==================== 数据存储（纯本地） ====================
 
     function saveData() {
@@ -5883,7 +6269,7 @@
                     qc: e.questionCount,
                     tl: e.timeLimit
                 })),
-                v: 'v2.13.0z',                       // 标记为压缩版本
+                v: 'v2.14.0z',                       // 标记为压缩版本
                 t: new Date().toISOString().split('T')[0] // 只保留日期：2026-04-09
             };
             
@@ -6840,14 +7226,21 @@
         loadData();
         initLevels();
 
-        // v2.13.0: 优先检测快速同步链接（?s=参数，学员点链接自动同步）
-        if (checkQuickSyncParam()) {
+        // v2.14.0: 优先检测云端同步链接（?g=参数）
+        if (await checkGistParam()) {
+            console.log('云端同步完成');
+        }
+        // v2.13.0: 再检测快速同步链接（?s=参数，学员点链接自动同步）
+        else if (checkQuickSyncParam()) {
             console.log('快速同步完成，已自动更新学员数据');
         }
         // 再检查旧的sync参数（完整数据同步）
         else if (checkSyncParam()) {
             console.log('同步码自动同步完成');
         }
+
+        // v2.14.0: 初始化云端同步 UI（管理员端）
+        updateGistUI();
 
         // 自动填充第一个管理员账号到登录框
         const adminKeys = Object.keys(database.users).filter(k => database.users[k].role === 'admin');

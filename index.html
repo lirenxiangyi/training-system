@@ -824,8 +824,9 @@
     <!-- v2.12.4: 同步码极致压缩（减少40-60%字符数） + 向后兼容 -->
     <!-- v2.13.0: 学员快速同步链接（一键同步，无需手动粘贴同步码） -->
     <!-- v2.14.0: GitHub Gist 云端同步（管理员一键上传，学员一键同步） -->
-    <!-- v2.14.0补充：级别卡片新增删除按钮 + 学员批量删除功能 + 修复导入状态中文识别 -->
+    <!-- v2.14.0补充：级别卡片删除按钮 + 学员批量删除 + 状态中文兼容 + Excel导入 + 乱码数据清理 -->
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -1132,6 +1133,7 @@
                     <button class="btn btn-secondary" onclick="exportStudents()">导出</button>
                     <button class="btn btn-secondary" onclick="importStudents()">导入</button>
                     <button class="btn btn-danger" id="batchDeleteStudBtn" onclick="batchDeleteStudents()" style="display:none;">批量删除</button>
+                    <button class="btn btn-warning" onclick="cleanupCorruptStudents()" style="background:#e67e22;color:#fff;">清理乱码数据</button>
                 </div>
             </div>
             <div class="search-box">
@@ -1154,7 +1156,7 @@
                     </tbody>
                 </table>
             </div>
-            <input type="file" id="importStudentFile" style="display:none" accept=".csv" onchange="handleStudentImport()">
+            <input type="file" id="importStudentFile" style="display:none" accept=".csv,.xlsx,.xls" onchange="handleStudentImport()">
         </div>
         
         <!-- 课程管理 -->
@@ -3138,6 +3140,9 @@
     }
     
     // 学员管理
+    function isStudentActive(status) {
+        return status === 'active' || status === '活跃' || status === '在职';
+    }
     function renderStudents() {
         const tbody = document.getElementById('studentsList');
         tbody.innerHTML = database.students.map(s => `
@@ -3147,7 +3152,7 @@
                 <td>${s.name}</td>
                 <td>${s.phone}</td>
                 <td>${s.course}</td>
-                <td><span style="color: #48bb78; font-weight: 600;">${s.status === 'active' ? '活跃' : '离职'}</span></td>
+                <td><span style="color: #48bb78; font-weight: 600;">${isStudentActive(s.status) ? '活跃' : '离职'}</span></td>
                 <td>
                     <button class="btn btn-secondary" onclick="editStudent('${s.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteStudent('${s.id}')">删除</button>
@@ -3169,7 +3174,7 @@
                 <td>${s.name}</td>
                 <td>${s.phone}</td>
                 <td>${s.course}</td>
-                <td><span style="color: #48bb78; font-weight: 600;">${s.status === 'active' ? '活跃' : '离职'}</span></td>
+                <td><span style="color: #48bb78; font-weight: 600;">${isStudentActive(s.status) ? '活跃' : '离职'}</span></td>
                 <td>
                     <button class="btn btn-secondary" onclick="editStudent('${s.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteStudent('${s.id}')">删除</button>
@@ -3303,6 +3308,47 @@
         showToast('已删除 ' + selectedIds.length + ' 名学员', 'success');
     }
     
+    // 清理乱码数据（ID或姓名包含乱码字符的记录）
+    function cleanupCorruptStudents() {
+        const before = database.students.length;
+        // 乱码特征：包含替换字符�、或者ID/姓名全是非可读字符
+        const isCorrupt = (str) => {
+            if (!str) return false;
+            // 包含Unicode替换字符
+            if (str.includes('\uFFFD')) return true;
+            // 包含常见乱码序列
+            if (/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(str)) return true;
+            // 全由非中文非英文非数字的特殊符号组成
+            const readable = str.replace(/[\u4e00-\u9fa5a-zA-Z0-9\s\-_.,@()（）]/g, '');
+            if (readable.length > str.length * 0.5) return true;
+            return false;
+        };
+        
+        const corrupt = [];
+        const clean = [];
+        database.students.forEach(s => {
+            if (isCorrupt(s.id) || isCorrupt(s.name)) {
+                corrupt.push(s);
+            } else {
+                clean.push(s);
+            }
+        });
+        
+        if (corrupt.length === 0) {
+            showToast('未发现乱码数据，共 ' + before + ' 条记录', 'info');
+            return;
+        }
+        
+        if (!confirm('发现 ' + corrupt.length + ' 条乱码数据（共 ' + before + ' 条），确定清理吗？\n\n⚠️ 清理后不可恢复！')) return;
+        
+        database.students = clean;
+        saveData();
+        renderStudents();
+        document.getElementById('selectAllStudents').checked = false;
+        updateBatchDeleteStudBtn();
+        showToast('已清理 ' + corrupt.length + ' 条乱码数据，剩余 ' + clean.length + ' 条', 'success');
+    }
+    
     function exportStudents() {
         let csv = '\uFEFFID,姓名,联系方式,报名课程,状态\n';
         database.students.forEach(s => {
@@ -3320,16 +3366,18 @@
         const file = document.getElementById('importStudentFile').files[0];
         if (!file) return;
         
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const lines = e.target.result.split('\n');
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        // 统一处理导入数据的函数
+        const processStudentCSV = (csvText) => {
+            const lines = csvText.split('\n');
+            let importCount = 0;
             for (let i = 1; i < lines.length; i++) {
-                if (!lines[i]) continue;
+                if (!lines[i] || !lines[i].trim()) continue;
                 const parts = lines[i].split(',');
-                if (parts.length >= 5) {
-                    // 状态归一化：支持中文(活跃/离职)和英文(active/inactive)
+                if (parts.length >= 5 && parts[0] && parts[0].trim()) {
                     const rawStatus = parts[4] ? parts[4].trim() : '';
-                    const normalizedStatus = (rawStatus === '活跃' || rawStatus === 'active') ? 'active' : 'inactive';
+                    const normalizedStatus = (rawStatus === '活跃' || rawStatus === 'active' || rawStatus === '在职') ? 'active' : 'inactive';
                     database.students.push({
                         id: parts[0].trim(),
                         name: parts[1].trim(),
@@ -3337,13 +3385,43 @@
                         course: parts[3].trim(),
                         status: normalizedStatus
                     });
+                    importCount++;
                 }
             }
-            saveData();
-            renderStudents();
-            showToast('导入成功', 'success');
+            return importCount;
         };
-        reader.readAsText(file);
+        
+        if (ext === 'xlsx' || ext === 'xls') {
+            // Excel 文件：用 SheetJS 解析
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                // 转为 CSV 格式再统一处理
+                const csvText = XLSX.utils.sheet_to_csv(sheet);
+                const count = processStudentCSV(csvText);
+                saveData();
+                renderStudents();
+                document.getElementById('selectAllStudents').checked = false;
+                updateBatchDeleteStudBtn();
+                showToast('导入成功，共 ' + count + ' 名学员', 'success');
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            // CSV 文件：直接读文本
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const count = processStudentCSV(e.target.result);
+                saveData();
+                renderStudents();
+                document.getElementById('selectAllStudents').checked = false;
+                updateBatchDeleteStudBtn();
+                showToast('导入成功，共 ' + count + ' 名学员', 'success');
+            };
+            reader.readAsText(file);
+        }
     }
     
     // 课程管理

@@ -824,6 +824,7 @@
     <!-- v2.12.4: 同步码极致压缩（减少40-60%字符数） + 向后兼容 -->
     <!-- v2.13.0: 学员快速同步链接（一键同步，无需手动粘贴同步码） -->
     <!-- v2.14.0: GitHub Gist 云端同步（管理员一键上传，学员一键同步） -->
+    <!-- v2.14.0补充：级别卡片新增删除按钮 + 学员批量删除功能 -->
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </head>
 <body>
@@ -1130,6 +1131,7 @@
                     <button class="btn btn-primary" onclick="openAddStudentModal()">添加学员</button>
                     <button class="btn btn-secondary" onclick="exportStudents()">导出</button>
                     <button class="btn btn-secondary" onclick="importStudents()">导入</button>
+                    <button class="btn btn-danger" id="batchDeleteStudBtn" onclick="batchDeleteStudents()" style="display:none;">批量删除</button>
                 </div>
             </div>
             <div class="search-box">
@@ -1139,6 +1141,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="selectAllStudents" onchange="toggleSelectAllStudents(this)"></th>
                             <th>学员ID</th>
                             <th>姓名</th>
                             <th>联系方式</th>
@@ -3139,6 +3142,7 @@
         const tbody = document.getElementById('studentsList');
         tbody.innerHTML = database.students.map(s => `
             <tr>
+                <td><input type="checkbox" class="student-checkbox" value="${s.id}" onchange="updateBatchDeleteStudBtn()"></td>
                 <td>${s.id}</td>
                 <td>${s.name}</td>
                 <td>${s.phone}</td>
@@ -3160,6 +3164,7 @@
         const tbody = document.getElementById('studentsList');
         tbody.innerHTML = filtered.map(s => `
             <tr>
+                <td><input type="checkbox" class="student-checkbox" value="${s.id}" onchange="updateBatchDeleteStudBtn()"></td>
                 <td>${s.id}</td>
                 <td>${s.name}</td>
                 <td>${s.phone}</td>
@@ -3257,6 +3262,45 @@
             renderStudents();
             showToast('学员已删除', 'success');
         }
+    }
+    
+    // 全选/取消全选学员
+    function toggleSelectAllStudents(checkbox) {
+        const boxes = document.querySelectorAll('.student-checkbox');
+        boxes.forEach(b => b.checked = checkbox.checked);
+        updateBatchDeleteStudBtn();
+    }
+    
+    // 更新批量删除按钮状态
+    function updateBatchDeleteStudBtn() {
+        const checked = document.querySelectorAll('.student-checkbox:checked');
+        const btn = document.getElementById('batchDeleteStudBtn');
+        const selectAll = document.getElementById('selectAllStudents');
+        if (checked.length > 0) {
+            btn.style.display = 'inline-block';
+            btn.textContent = '批量删除（' + checked.length + '人）';
+        } else {
+            btn.style.display = 'none';
+        }
+        if (selectAll) {
+            const allBoxes = document.querySelectorAll('.student-checkbox');
+            selectAll.checked = allBoxes.length > 0 && checked.length === allBoxes.length;
+        }
+    }
+    
+    // 批量删除选中的学员
+    function batchDeleteStudents() {
+        const checked = document.querySelectorAll('.student-checkbox:checked');
+        if (checked.length === 0) return;
+        if (!confirm('确定要删除选中的 ' + checked.length + ' 名学员吗？')) return;
+        
+        const selectedIds = Array.from(checked).map(b => String(b.value));
+        database.students = database.students.filter(s => !selectedIds.includes(String(s.id)));
+        saveData();
+        renderStudents();
+        document.getElementById('selectAllStudents').checked = false;
+        updateBatchDeleteStudBtn();
+        showToast('已删除 ' + selectedIds.length + ' 名学员', 'success');
     }
     
     function exportStudents() {
@@ -3625,7 +3669,8 @@
         levels.forEach((level, idx) => {
             const count = database.questions.filter(q => q.level === level).length;
             const color = colors[idx % colors.length];
-            html += `<div style="background:#fff;padding:12px 18px;border-radius:8px;border:2px solid ${color};cursor:pointer;text-align:center;min-width:100px;" onclick="document.getElementById('levelFilter').value='${level}';filterQuestions();">
+            html += `<div style="background:#fff;padding:12px 18px;border-radius:8px;border:2px solid ${color};cursor:pointer;text-align:center;min-width:100px;position:relative;" onclick="document.getElementById('levelFilter').value='${level}';filterQuestions();">
+                <button onclick="event.stopPropagation();deleteLevel('${level}')" title="删除该级别" style="position:absolute;top:2px;right:4px;background:none;border:none;color:#a0aec0;font-size:14px;cursor:pointer;padding:0;line-height:1;">×</button>
                 <div style="font-size:22px;font-weight:bold;color:${color};">${count}</div>
                 <div style="font-size:12px;color:#999;">${level}</div>
             </div>`;

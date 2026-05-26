@@ -824,7 +824,7 @@
     <!-- v2.12.4: 同步码极致压缩（减少40-60%字符数） + 向后兼容 -->
     <!-- v2.13.0: 学员快速同步链接（一键同步，无需手动粘贴同步码） -->
     <!-- v2.14.0: GitHub Gist 云端同步（管理员一键上传，学员一键同步） -->
-    <!-- v2.14.0补充：级别卡片新增删除按钮 + 学员批量删除功能 -->
+    <!-- v2.14.0补充：级别卡片新增删除按钮 + 学员批量删除功能 + 修复导入状态中文识别 -->
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </head>
 <body>
@@ -3306,7 +3306,8 @@
     function exportStudents() {
         let csv = '\uFEFFID,姓名,联系方式,报名课程,状态\n';
         database.students.forEach(s => {
-            csv += `${s.id},${s.name},${s.phone},${s.course},${s.status}\n`;
+            const statusText = s.status === 'active' ? '活跃' : '离职';
+            csv += `${s.id},${s.name},${s.phone},${s.course},${statusText}\n`;
         });
         downloadCSV(csv, '学员表.csv');
     }
@@ -3326,12 +3327,15 @@
                 if (!lines[i]) continue;
                 const parts = lines[i].split(',');
                 if (parts.length >= 5) {
+                    // 状态归一化：支持中文(活跃/离职)和英文(active/inactive)
+                    const rawStatus = parts[4] ? parts[4].trim() : '';
+                    const normalizedStatus = (rawStatus === '活跃' || rawStatus === 'active') ? 'active' : 'inactive';
                     database.students.push({
-                        id: parts[0],
-                        name: parts[1],
-                        phone: parts[2],
-                        course: parts[3],
-                        status: parts[4]
+                        id: parts[0].trim(),
+                        name: parts[1].trim(),
+                        phone: parts[2].trim(),
+                        course: parts[3].trim(),
+                        status: normalizedStatus
                     });
                 }
             }

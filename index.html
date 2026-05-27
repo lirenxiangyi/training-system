@@ -22,14 +22,14 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.14.0 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.16.0 - LOADED AT ' + new Date().toISOString());
     
     // 页面加载时检查：快速同步链接（?s=）会自动处理，无需切换tab
     window.addEventListener('DOMContentLoaded', function() {
         // 不再自动切换到同步tab，快速同步链接会自动在后台完成
     });
     </script>
-    <title>冉鹏工作室培训管理系统 v2.14.0</title>
+    <title>冉鹏工作室培训管理系统 v2.16.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -1150,8 +1150,9 @@
                             <th><input type="checkbox" id="selectAllStudents" onchange="toggleSelectAllStudents(this)"></th>
                             <th>学员ID</th>
                             <th>姓名</th>
-                            <th>联系方式</th>
-                            <th>报名课程</th>
+                            <th>单位</th>
+                            <th>员工编号</th>
+                            <th>电话</th>
                             <th>所属班级</th>
                             <th>状态</th>
                             <th>操作</th>
@@ -1640,20 +1641,26 @@
                 <input type="text" id="studentName_add">
             </div>
             <div class="form-group" style="margin-bottom: 15px;">
-                <label>联系方式</label>
-                <input type="text" id="studentPhone">
+                <label>单位</label>
+                <input type="text" id="studentUnit" placeholder="例如：川西钻探70297队">
             </div>
             <div class="form-group" style="margin-bottom: 15px;">
-                <label>报名课程</label>
-                <select id="studentCourse">
-                    <option>选择课程...</option>
-                </select>
+                <label>员工编号</label>
+                <input type="text" id="studentEmployeeNo" placeholder="例如：86186471">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>电话</label>
+                <input type="text" id="studentPhone">
             </div>
             <div class="form-group" style="margin-bottom: 15px;">
                 <label>所属班级</label>
                 <select id="studentBatch">
                     <option value="">未分配</option>
                 </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>备注</label>
+                <input type="text" id="studentRemark" placeholder="其他需要说明的信息">
             </div>
         </div>
         <div class="modal-footer">
@@ -2125,9 +2132,9 @@
             { id: 'C2026-002', name: '2026年川庆钻井队电气技能提升班（第二期）', course: 'PLC编程', startDate: '2026-05-01', endDate: '2026-06-30', status: 'active' }
         ],
         students: [
-            { id: 'S001', name: '张三', phone: '13800138000', course: 'JavaScript', batch: 'C2026-001', status: 'active' },
-            { id: 'S002', name: '李四', phone: '13800138001', course: 'Python', batch: 'C2026-001', status: 'active' },
-            { id: 'S003', name: '李庆', phone: '13800138002', course: 'JavaScript', batch: 'C2026-002', status: 'active' }
+            { id: 'S001', name: '张三', unit: '川西钻探70276队', employeeNo: '12345678', phone: '13800138000', course: '电气安全', batch: 'C2026-001', status: 'active', remark: '' },
+            { id: 'S002', name: '李四', unit: '川西钻探70277队', employeeNo: '23456789', phone: '13800138001', course: 'PLC编程', batch: 'C2026-001', status: 'active', remark: '' },
+            { id: 'S003', name: '李庆', unit: '川西钻探70278队', employeeNo: '34567890', phone: '13800138002', course: '电气安全', batch: 'C2026-002', status: 'active', remark: '' }
         ],
         courses: [
             { id: 'C001', name: 'JavaScript基础', teacher: '王老师', hours: 40, price: 999, enrollCount: 15 },
@@ -3193,10 +3200,11 @@
                 <td><input type="checkbox" class="student-checkbox" value="${s.id}" onchange="updateBatchDeleteStudBtn()"></td>
                 <td>${s.id}</td>
                 <td>${s.name}</td>
-                <td>${s.phone}</td>
-                <td>${s.course}</td>
-                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${getClassDisplayName(s.batch)}">${getClassDisplayName(s.batch)}</td>
-                <td><span style="color: #48bb78; font-weight: 600;">${isStudentActive(s.status) ? '活跃' : '离职'}</span></td>
+                <td>${s.unit || ''}</td>
+                <td>${s.employeeNo || ''}</td>
+                <td>${s.phone || ''}</td>
+                <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${getClassDisplayName(s.batch)}">${getClassDisplayName(s.batch)}</td>
+                <td><span style="color: ${isStudentActive(s.status) ? '#48bb78' : '#e53e3e'}; font-weight: 600;">${isStudentActive(s.status) ? '活跃' : '离职'}</span></td>
                 <td>
                     <button class="btn btn-secondary" onclick="editStudent('${s.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteStudent('${s.id}')">删除</button>
@@ -3209,7 +3217,7 @@
         const search = document.getElementById('studentSearch').value.toLowerCase();
         const classFilter = document.getElementById('classFilter').value;
         const filtered = (database.students || []).filter(s => {
-            const matchSearch = !search || s.name.toLowerCase().includes(search) || s.id.toLowerCase().includes(search);
+            const matchSearch = !search || s.name.toLowerCase().includes(search) || s.id.toLowerCase().includes(search) || (s.unit||'').includes(search) || (s.employeeNo||'').includes(search);
             const matchClass = !classFilter || s.batch === classFilter;
             return matchSearch && matchClass;
         });
@@ -3219,10 +3227,11 @@
                 <td><input type="checkbox" class="student-checkbox" value="${s.id}" onchange="updateBatchDeleteStudBtn()"></td>
                 <td>${s.id}</td>
                 <td>${s.name}</td>
-                <td>${s.phone}</td>
-                <td>${s.course}</td>
-                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${getClassDisplayName(s.batch)}">${getClassDisplayName(s.batch)}</td>
-                <td><span style="color: #48bb78; font-weight: 600;">${isStudentActive(s.status) ? '活跃' : '离职'}</span></td>
+                <td>${s.unit || ''}</td>
+                <td>${s.employeeNo || ''}</td>
+                <td>${s.phone || ''}</td>
+                <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${getClassDisplayName(s.batch)}">${getClassDisplayName(s.batch)}</td>
+                <td><span style="color: ${isStudentActive(s.status) ? '#48bb78' : '#e53e3e'}; font-weight: 600;">${isStudentActive(s.status) ? '活跃' : '离职'}</span></td>
                 <td>
                     <button class="btn btn-secondary" onclick="editStudent('${s.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteStudent('${s.id}')">删除</button>
@@ -3240,8 +3249,10 @@
         document.getElementById('studentIdInput').disabled = false;
         document.getElementById('studentIdInput').placeholder = '例如：S001';
         document.getElementById('studentName_add').value = '';
+        document.getElementById('studentUnit').value = '';
+        document.getElementById('studentEmployeeNo').value = '';
         document.getElementById('studentPhone').value = '';
-        document.getElementById('studentCourse').value = '选择课程...';
+        document.getElementById('studentRemark').value = '';
         // 填充班级下拉框并重置选择
         populateStudentBatchDropdown();
         const batchSel = document.getElementById('studentBatch');
@@ -3258,8 +3269,10 @@
         document.getElementById('studentIdInput').disabled = false;
         document.getElementById('studentIdInput').placeholder = '学员ID';
         document.getElementById('studentName_add').value = student.name;
-        document.getElementById('studentPhone').value = student.phone;
-        document.getElementById('studentCourse').value = student.course;
+        document.getElementById('studentUnit').value = student.unit || '';
+        document.getElementById('studentEmployeeNo').value = student.employeeNo || '';
+        document.getElementById('studentPhone').value = student.phone || '';
+        document.getElementById('studentRemark').value = student.remark || '';
         // 填充班级下拉框并选中当前班级
         populateStudentBatchDropdown();
         const batchSel = document.getElementById('studentBatch');
@@ -3270,16 +3283,18 @@
     function saveStudent() {
         const id = document.getElementById('studentIdInput').value.trim();
         const name = document.getElementById('studentName_add').value.trim();
+        const unit = document.getElementById('studentUnit').value.trim();
+        const employeeNo = document.getElementById('studentEmployeeNo').value.trim();
         const phone = document.getElementById('studentPhone').value.trim();
-        const course = document.getElementById('studentCourse').value;
+        const remark = document.getElementById('studentRemark').value.trim();
         const batch = document.getElementById('studentBatch') ? document.getElementById('studentBatch').value : '';
         
         if (!id) {
             showToast('请输入学员ID', 'error');
             return;
         }
-        if (!name || !phone || course === '选择课程...') {
-            showToast('请填写完整信息', 'error');
+        if (!name) {
+            showToast('请输入姓名', 'error');
             return;
         }
         
@@ -3295,9 +3310,11 @@
             if (student) {
                 student.id = id;  // 允许修改ID
                 student.name = name;
+                student.unit = unit;
+                student.employeeNo = employeeNo;
                 student.phone = phone;
-                student.course = course;
-                student.batch = batch;  // 保存班级
+                student.remark = remark;
+                student.batch = batch;
             }
             showToast('学员更新成功', 'success');
         } else {
@@ -3308,7 +3325,8 @@
             }
             database.students.push({
                 id: id,
-                name: name, phone: phone, course: course, status: 'active',
+                name: name, unit: unit, employeeNo: employeeNo,
+                phone: phone, remark: remark, course: '', status: 'active',
                 batch: batch
             });
             showToast('学员添加成功', 'success');
@@ -3504,11 +3522,11 @@
     }
     
     function exportStudents() {
-        let csv = '\uFEFFID,姓名,联系方式,报名课程,所属班级,状态\n';
+        let csv = '\uFEFF学员ID,姓名,单位,员工编号,电话,所属班级,备注,状态\n';
         database.students.forEach(s => {
             const statusText = s.status === 'active' ? '活跃' : '离职';
             const className = getClassDisplayName(s.batch);
-            csv += `${s.id},${s.name},${s.phone},${s.course},${className},${statusText}\n`;
+            csv += `${s.id},${s.name},${s.unit||''},${s.employeeNo||''},${s.phone||''},${className},${s.remark||''},${statusText}\n`;
         });
         downloadCSV(csv, '学员表.csv');
     }
@@ -3525,38 +3543,64 @@
         
         // 统一处理导入数据的函数
         const processStudentData = (rows) => {
-            // rows: 二维数组，每行是一个学员的数据
+            // 按列数自动识别：>=8列 → 新格式(学员ID,姓名,单位,员工编号,电话,所属班级,备注,状态)
+            //                    <8列 → 旧格式(ID,姓名,联系方式,报名课程,所属班级,状态)
             let importCount = 0;
             for (let i = 1; i < rows.length; i++) {
                 if (!rows[i] || !rows[i][0] || !rows[i][0].trim()) continue;
                 const p = rows[i];
-                if (p.length < 4) continue;
-                const id = p[0].trim();
-                const name = (p[1] || '').trim();
-                const phone = (p[2] || '').trim();
-                const course = (p[3] || '').trim();
-                // 判断格式：有第5列(索引4)且第6列(索引5)存在 → 新格式含班级
-                let batchRaw = '', rawStatus = '';
-                if (p.length >= 6) {
-                    batchRaw = (p[4] || '').trim();
-                    rawStatus = (p[5] || '').trim();
+                let id, name, phone, course = '', batch = '', status;
+                let unit = '', employeeNo = '', remark = '';
+                
+                if (p.length >= 8) {
+                    // 新格式：学员ID,姓名,单位,员工编号,电话,所属班级,备注,状态
+                    id = p[0].trim();
+                    name = (p[1] || '').trim();
+                    unit = (p[2] || '').trim();
+                    employeeNo = (p[3] || '').trim();
+                    phone = (p[4] || '').trim();
+                    const batchRaw = (p[5] || '').trim();
+                    remark = (p[6] || '').trim();
+                    const rawStatus = (p[7] || '').trim();
+                    status = (rawStatus === '活跃' || rawStatus === 'active' || rawStatus === '在职') ? 'active' : 'inactive';
+                    // 班级匹配
+                    if (batchRaw) {
+                        const byId = (database.classes || []).find(c => c.id === batchRaw);
+                        if (byId) { batch = byId.id; }
+                        else {
+                            const byName = (database.classes || []).find(c => c.name === batchRaw);
+                            if (byName) batch = byName.id;
+                        }
+                    }
                 } else {
-                    rawStatus = (p[4] || '').trim();
-                }
-                // 班级：按ID查找，找不到则按名称查找
-                let batchId = '';
-                if (batchRaw) {
-                    const byId = (database.classes || []).find(c => c.id === batchRaw);
-                    if (byId) { batchId = byId.id; }
-                    else {
-                        const byName = (database.classes || []).find(c => c.name === batchRaw);
-                        if (byName) batchId = byName.id;
+                    // 旧格式：ID,姓名,联系方式,报名课程,所属班级,状态（4-6列）
+                    if (p.length < 4) continue;
+                    id = p[0].trim();
+                    name = (p[1] || '').trim();
+                    phone = (p[2] || '').trim();
+                    course = (p[3] || '').trim();
+                    let batchRaw = '', rawStatus = '';
+                    if (p.length >= 6) {
+                        batchRaw = (p[4] || '').trim();
+                        rawStatus = (p[5] || '').trim();
+                    } else {
+                        rawStatus = (p[4] || '').trim();
+                    }
+                    status = (rawStatus === '活跃' || rawStatus === 'active' || rawStatus === '在职') ? 'active' : 'inactive';
+                    if (batchRaw) {
+                        const byId = (database.classes || []).find(c => c.id === batchRaw);
+                        if (byId) { batch = byId.id; }
+                        else {
+                            const byName = (database.classes || []).find(c => c.name === batchRaw);
+                            if (byName) batch = byName.id;
+                        }
                     }
                 }
-                const normalizedStatus = (rawStatus === '活跃' || rawStatus === 'active' || rawStatus === '在职') ? 'active' : 'inactive';
+                
                 database.students.push({
-                    id: id, name: name, phone: phone,
-                    course: course, batch: batchId, status: normalizedStatus
+                    id: id, name: name, unit: unit, employeeNo: employeeNo,
+                    phone: phone, remark: remark, course: course,
+                    batch: batch, status: status
                 });
                 importCount++;
             }
@@ -3591,11 +3635,6 @@
     
     // 课程管理
     function renderCourses() {
-        const courseSelect = document.getElementById('studentCourse');
-        courseSelect.innerHTML = '<option>选择课程...</option>' + database.courses.map(c => 
-            `<option value="${c.name}">${c.name}</option>`
-        ).join('');
-        
         const tbody = document.getElementById('coursesList');
         tbody.innerHTML = database.courses.map(c => `
             <tr>

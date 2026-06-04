@@ -22,14 +22,14 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.16.0 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.17.0 - LOADED AT ' + new Date().toISOString());
     
     // 页面加载时检查：快速同步链接（?s=）会自动处理，无需切换tab
     window.addEventListener('DOMContentLoaded', function() {
         // 不再自动切换到同步tab，快速同步链接会自动在后台完成
     });
     </script>
-    <title>冉鹏工作室培训管理系统 v2.16.0</title>
+    <title>冉鹏工作室培训管理系统 v2.17.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -1367,6 +1367,7 @@
                             <th>类型</th>
                             <th>难度</th>
                             <th>答案</th>
+                            <th>解析</th>
                             <th>图片</th>
                             <th>操作</th>
                         </tr>
@@ -1751,6 +1752,10 @@
             <div class="form-group" style="margin-bottom: 15px;">
                 <label>选项/答案 <span style="color:#f56565; font-size:12px;">（用|分隔选项，最后一项为答案。单选/多选/填空示例：A|B|C|AB；判断题示例：是|否|是）</span></label>
                 <textarea id="questionOptionsInput" rows="4" placeholder="示例：&#10;单选题：选项A|选项B|选项C|B&#10;多选题：选项A|选项B|选项C|选项D|AC&#10;判断题：是|否|是&#10;填空题：答案1|答案2|答案3|答案1"></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>试题解析 <span style="color:#667eea; font-size:12px;">（可选，解释为什么选这个答案）</span></label>
+                <textarea id="questionAnalysisInput" rows="2" placeholder="例如：根据《低压电工作业安全技术实际操作考试标准》，该说法符合安全操作规程..."></textarea>
             </div>
             <div class="form-group" style="margin-bottom: 15px;">
                 <label>图片 <span style="color:#667eea; font-size:12px;">（可选，支持在线链接、Base64或上传图片）</span></label>
@@ -4163,6 +4168,11 @@
                 </div>` : 
                 `<span style="color:#999;font-size:12px;">无图片</span>`;
 
+            // 解析显示
+            const analysisHtml = q.analysis ? 
+                `<span style="color:#38a169;font-size:12px;" title="${q.analysis.replace(/"/g, '&quot;')}">📖 有</span>` : 
+                `<span style="color:#cbd5e0;font-size:12px;">无</span>`;
+
             return `
             <tr>
                 <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
@@ -4171,6 +4181,7 @@
                 <td>${getTypeName(q.type)}</td>
                 <td>${getDifficultyName(q.difficulty)}</td>
                 <td>${answerDisplay}</td>
+                <td>${analysisHtml}</td>
                 <td>${imageHtml}</td>
                 <td>
                     <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
@@ -4220,6 +4231,11 @@
                 </div>` : 
                 `<span style="color:#999;font-size:12px;">无图片</span>`;
 
+            // 解析显示
+            const analysisHtml = q.analysis ? 
+                `<span style="color:#38a169;font-size:12px;" title="${q.analysis.replace(/"/g, '&quot;')}">📖 有</span>` : 
+                `<span style="color:#cbd5e0;font-size:12px;">无</span>`;
+
             return `
             <tr>
                 <td><input type="checkbox" class="question-checkbox" value="${q.id}" onchange="updateBatchDeleteBtn()"></td>
@@ -4228,6 +4244,7 @@
                 <td>${getTypeName(q.type)}</td>
                 <td>${getDifficultyName(q.difficulty)}</td>
                 <td>${answerDisplay}</td>
+                <td>${analysisHtml}</td>
                 <td>${imageHtml}</td>
                 <td>
                     <button class="btn btn-secondary" onclick="editQuestion('${q.id}')">编辑</button>
@@ -4302,6 +4319,7 @@
         document.getElementById('addQuestionModal').classList.add('active');
         document.getElementById('questionContentInput').value = '';
         document.getElementById('questionOptionsInput').value = '';
+        document.getElementById('questionAnalysisInput').value = '';
         document.getElementById('questionTypeSelect').value = 'single';
         document.getElementById('questionDifficultySelect').value = 'easy';
         document.getElementById('questionLevelSelect').value = database.levels[0] || '初级';
@@ -4348,6 +4366,7 @@
         
         contentInput.value = question.content || '';
         optionsInput.value = question.options || '';
+        document.getElementById('questionAnalysisInput').value = question.analysis || '';
         typeInput.value = question.type || 'single';
         difficultyInput.value = question.difficulty || 'easy';
         levelInput.value = question.level || database.levels[0] || '初级';
@@ -4463,6 +4482,7 @@
         const level = levelInput.value || database.levels[0] || '初级';
         const options = optionsInput.value.trim();
         const imageUrl = imageUrlInput.value.trim();
+        const analysis = document.getElementById('questionAnalysisInput').value.trim();
         
         if (!content) {
             showToast('❌ 请填写题目内容', 'error');
@@ -4498,6 +4518,7 @@
                 question.options = optionsStr;
                 question.answer = answer;
                 question.imageUrl = imageUrl;
+                question.analysis = analysis;
                 saveData();
                 showToast('✅ 题目更新成功', 'success');
             } else {
@@ -4513,7 +4534,8 @@
                 level: level,
                 options: optionsStr,
                 answer: answer,
-                imageUrl: imageUrl  // 使用输入的值
+                imageUrl: imageUrl,  // 使用输入的值
+                analysis: analysis
             };
             database.questions.push(newQuestion);
             saveData();
@@ -4548,15 +4570,17 @@
     }
     
     function exportQuestions() {
-        // 新格式：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案
-        let csv = '序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案\n';
+        // 新格式：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案,解析,图片URL
+        let csv = '\uFEFF序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案,解析,图片URL\n';
         database.questions.forEach((q, idx) => {
             let options = (q.options || '').split('|');
             
             // 判断题特殊处理
             if (q.type === 'judge') {
                 const answerLetter = (q.answer === '正确' || q.answer === 'A') ? 'A' : 'B';
-                csv += `${idx + 1},"${(q.content||'').replace(/"/g, '""')}",judge,${q.level||'初级'},✓,✗,,,${answerLetter}\n`;
+                const analysis = (q.analysis || '').replace(/"/g, '""');
+                const imgUrl = q.imageUrl || '';
+                csv += `${idx + 1},"${(q.content||'').replace(/"/g, '""')}",judge,${q.level||'初级'},✓,✗,,,${answerLetter},"${analysis}","${imgUrl}"\n`;
                 return;
             }
             
@@ -4579,7 +4603,9 @@
                 }
             });
             
-            csv += `${idx + 1},"${(q.content||'').replace(/"/g, '""')}",${q.type},${q.level||'初级'},"${optA}","${optB}","${optC}","${optD}",${answerLetters}\n`;
+            const analysis = (q.analysis || '').replace(/"/g, '""');
+            const imgUrl = q.imageUrl || '';
+            csv += `${idx + 1},"${(q.content||'').replace(/"/g, '""')}",${q.type},${q.level||'初级'},"${optA}","${optB}","${optC}","${optD}",${answerLetters},"${analysis}","${imgUrl}"\n`;
         });
         downloadCSV(csv, '题库.csv');
         showToast('✅ 题库导出成功（表格格式）', 'success');
@@ -4679,8 +4705,8 @@
                         let id, qContent, qLevel, qType, qOptions, qAnswer;
                         
                         // 智能识别格式
-                        if (fields.length >= 9) {
-                            // 新格式（分列选项）：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案,图片URL
+                        if (fields.length >= 10) {
+                            // 新格式（含解析列）：序号,题目内容,题型,级别,选项A,选项B,选项C,选项D,答案,解析[,图片URL]
                             id = 'Q' + String(database.questions.length + 1).padStart(3, '0');
                             qContent = fields[1] ? fields[1].trim() : '';
                             qType = fields[2] ? fields[2].trim() : 'single';
@@ -4709,8 +4735,9 @@
                             
                             qOptions = opts.join('|');
                             
-                            // 图片URL（第10列）
-                            const imageUrl = fields[9] ? fields[9].trim() : '';
+                            // 解析（第10列）和图片URL（第11列）
+                            var analysis = fields[9] ? fields[9].trim() : '';
+                            const imageUrl = fields[10] ? fields[10].trim() : '';
                             
                             // 转换答案：字母 -> 选项内容
                             const answerField = fields[8] ? fields[8].trim() : '';
@@ -4755,10 +4782,29 @@
                             continue;
                         }
                         
-                        // 【重要修复】无条件初始化 imageUrl，避免 is not defined
+                        // 【重要修复】无条件初始化 imageUrl 和 analysis，避免 is not defined
                         var imageUrl = '';
-                        if (fields.length >= 10 && fields[9]) {
-                            imageUrl = fields[9].trim();
+                        var analysis = '';
+                        if (fields.length >= 11 && fields[10]) {
+                            imageUrl = fields[10].trim();
+                        }
+                        if (fields.length >= 10 && fields[9] && fields.length >= 9) {
+                            // 判断是否为新格式（含解析列）
+                            // 新格式 >=10 列，第10列(index 9)是解析
+                            // 但需要区分旧9列格式（第10列index9是图片URL）和新11列格式
+                            if (fields.length >= 11) {
+                                analysis = fields[9] ? fields[9].trim() : '';
+                                imageUrl = fields[10] ? fields[10].trim() : '';
+                            } else if (fields.length === 10) {
+                                // 10列：可能是新格式（解析列），也可能是旧格式+图片URL
+                                // 简单判断：如果第10列看起来不像URL，就当作解析
+                                var field9 = fields[9] ? fields[9].trim() : '';
+                                if (field9 && !field9.startsWith('http') && !field9.startsWith('data:')) {
+                                    analysis = field9;
+                                } else {
+                                    imageUrl = field9;
+                                }
+                            }
                         }
                         
                         // 确保级别有效
@@ -4806,9 +4852,12 @@
                             continue;
                         }
                         
-                        // 【修复】确保 imageUrl 有默认值，避免 is not defined 错误
+                        // 【修复】确保 imageUrl 和 analysis 有默认值，避免 is not defined 错误
                         if (typeof imageUrl === 'undefined') {
                             imageUrl = '';
+                        }
+                        if (typeof analysis === 'undefined') {
+                            analysis = '';
                         }
 
                         // 验证题型
@@ -4833,7 +4882,8 @@
                             level: qLevel,
                             options: qOptions,
                             answer: qAnswer,
-                            imageUrl: imageUrl || ''
+                            imageUrl: imageUrl || '',
+                            analysis: analysis || ''
                         });
                         importCount++;
                     } catch (lineErr) {

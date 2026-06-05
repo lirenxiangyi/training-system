@@ -130,15 +130,17 @@ class ExamServer:
         if not exam:
             return None
 
-        # v2.19.0-fix: 服务器端生成考试题目，学员端直接使用（避免客户端题库不一致）
+        # v2.19.0-fix7: 服务器端生成考试题目，修复字段名不匹配问题
         exam_levels = exam.get('levels', [])
-        exam_types = exam.get('questionTypes', [])
+        type_counts = exam.get('typeCounts', {})
+        # 从 typeCounts 提取数量>0的题型（而非不存在的 questionTypes）
+        exam_types = [t for t, c in type_counts.items() if c > 0]
         all_questions = self.questions
 
-        # 按级别和题型过滤题库
+        # 按级别和题型过滤题库（题目字段是 'level' 单数字符串，不是 'levels' 数组）
         available = [q for q in all_questions
                      if q.get('type') in exam_types
-                     and any(l in (q.get('levels') or []) for l in exam_levels)]
+                     and q.get('level') in exam_levels]
 
         # 随机排序
         if exam.get('randomOrder', True):

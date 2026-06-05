@@ -76,6 +76,26 @@ class ExamServer:
         self.exams = admin_data.get('exams', [])
         self.questions = admin_data.get('questions', [])
         self.levels = admin_data.get('levels', [])
+
+        # v2.19.0-fix6: 自动清理题库中错误的 imageUrl（防止答案文本被当成图片URL）
+        import re
+        valid_url = re.compile(r'^(https?://|data:image/)', re.IGNORECASE)
+        cleaned = 0
+        for q in self.questions:
+            url = q.get('imageUrl', '')
+            if url and not valid_url.match(str(url)):
+                q['imageUrl'] = ''
+                cleaned += 1
+        if cleaned > 0:
+            print(f"  [清理] 已清除 {cleaned} 条无效图片URL")
+
+        # v2.19.0-fix6: 如果当前发布的考试已不在同步列表中，自动取消发布
+        if self.published_exam_id:
+            exam_ids = [e.get('id') for e in self.exams]
+            if self.published_exam_id not in exam_ids:
+                print(f"  [清理] 已取消发布不存在的旧考试: {self.published_exam_id}")
+                self.published_exam_id = None
+
         self._save()
         return {
             'status': 'ok',
@@ -350,17 +370,21 @@ class ExamHTTPHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         """自定义日志格式"""
         timestamp = datetime.now().strftime('%H:%M:%S')
+        # 正确格式化日志消息（处理含%的URL路径）
+        try:
+            msg = format % args if args else format
+        except (TypeError, ValueError):
+            msg = format
+
         # 简化API日志
-        if args and isinstance(args[0], str):
-            msg = args[0]
-            if '/api/' in msg:
-                # 只显示关键操作
-                if 'POST' in msg or 'sync' in msg or 'publish' in msg or 'submit' in msg:
-                    print(f"  [{timestamp}] {msg.split(' ')[0]}")
-            else:
-                print(f"  [{timestamp}] {msg}")
+        if '/api/' in msg:
+            # 只显示关键操作
+            if 'POST' in msg or 'sync' in msg or 'publish' in msg or 'submit' in msg:
+                print(f"  [{timestamp}] {msg.split(' ')[0]}")
         else:
-            print(f"  [{timestamp}] {format}")
+            # 只显示静态资源的错误日志（过滤掉正常的静态文件请求）
+            if '404' in msg or '500' in msg or 'error' in msg.lower():
+                print(f"  [{timestamp}] {msg}")
 
 
 def get_local_ip():

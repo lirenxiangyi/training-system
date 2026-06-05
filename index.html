@@ -2262,6 +2262,11 @@
             body: JSON.stringify({ examId: examId })
         });
         if (result && result.status === 'ok') {
+            // v2.19.0-fix: 更新本地缓存，使取消发布按钮正确显示
+            const exam = database.exams.find(function(e) { return e.id === examId; });
+            if (exam) {
+                publishedExamCache = { exam: exam, questions: database.questions || [], levels: database.levels || [] };
+            }
             showToast('考试已发布！学员现在可以参加考试了', 'success');
             refreshServerMonitor();
             renderExams(); // 刷新按钮状态
@@ -2280,6 +2285,7 @@
             body: JSON.stringify({})
         });
         if (result && result.status === 'ok') {
+            publishedExamCache = null; // v2.19.0-fix: 清空缓存
             showToast('已取消发布考试', 'success');
             refreshServerMonitor();
             renderExams();
@@ -2351,6 +2357,30 @@
 
         html += '<div style="text-align:right;margin-top:8px;font-size:10px;color:#a0aec0;">自动刷新中...</div>';
         content.innerHTML = html;
+    }
+
+    // v2.19.0-fix: 从服务器拉取成绩并合并到本地（管理员端）
+    async function loadScoresFromServer() {
+        if (!isServerMode) return;
+        const data = await serverFetch('/api/scores');
+        if (!data || !data.scores || data.scores.length === 0) return;
+
+        if (!database.scores) database.scores = [];
+        const localIds = new Set(database.scores.map(function(s) { return s.id; }));
+        let added = 0;
+
+        data.scores.forEach(function(s) {
+            if (!localIds.has(s.id)) {
+                database.scores.push(s);
+                localIds.add(s.id);
+                added++;
+            }
+        });
+
+        if (added > 0) {
+            saveData();
+            console.log('[服务器模式] 已合并 ' + added + ' 条成绩到本地');
+        }
     }
 
     // ==================== 原有变量和数据库 ====================
@@ -2545,7 +2575,8 @@
             return;
         }
 
-        // 更新本地题库和级别（用于题目随机抽取）
+        // v2.19.0-fix: 服务器已生成好题目，客户端直接使用，不再重新抽取
+        // 更新本地题库（用于答案校验等）
         if (data.questions && data.questions.length > 0) {
             database.questions = data.questions;
         }
@@ -2553,15 +2584,14 @@
             database.levels = data.levels;
         }
 
-        // 确保考试存在且已更新
+        // 确保考试存在，直接使用服务器返回的考试对象（含已生成的题目列表）
         const examIdx = database.exams.findIndex(function(e) { return e.id === data.exam.id; });
         if (examIdx >= 0) {
-            // 更新已有考试的配置（保留本地已有的成绩）
-            data.exam.questions = []; // 清空预选题目，让学员端重新随机抽取
-            Object.assign(database.exams[examIdx], data.exam);
+            // 保留本地已有的成绩记录
+            const existingScores = database.exams[examIdx].scores || [];
+            database.exams[examIdx] = data.exam;
+            database.exams[examIdx].scores = existingScores;
         } else {
-            // 新增考试
-            data.exam.questions = [];
             database.exams.push(data.exam);
         }
 
@@ -2587,6 +2617,16 @@
             syncDataToServer().then(function(ok) {
                 if (ok) {
                     showToast('数据已同步到考试服务器', 'success');
+                }
+                // v2.19.0-fix: 同步后获取服务器当前发布的考试状态
+                return serverFetch('/api/monitor');
+            }).then(function(monitorData) {
+                if (monitorData && monitorData.active && monitorData.publishedExamId) {
+                    const exam = database.exams.find(function(e) { return e.id === monitorData.publishedExamId; });
+                    if (exam) {
+                        publishedExamCache = { exam: exam, questions: database.questions || [], levels: database.levels || [] };
+                        renderExams(); // 刷新发布/取消发布按钮
+                    }
                 }
             });
             startServerMonitorPolling();
@@ -2656,9 +2696,13 @@
     function loadStudentExams(studentId) {
         let exams = database.exams || [];
 
-        // v2.19.0: 服务器模式下只显示已发布的考试
-        if (isServerMode && publishedExamCache && publishedExamCache.exam) {
-            exams = exams.filter(function(e) { return e.id === publishedExamCache.exam.id; });
+        // v2.19.0-fix: 服务器模式下只显示已发布的考试（未发布时显示空）
+        if (isServerMode) {
+            if (publishedExamCache && publishedExamCache.exam) {
+                exams = exams.filter(function(e) { return e.id === publishedExamCache.exam.id; });
+            } else {
+                exams = []; // 服务器未发布考试，不显示任何本地考试
+            }
         }
 
         const examContainer = document.getElementById('studentExamList');
@@ -3587,6 +3631,13 @@
         if (pageName === 'students') {
             populateClassFilter();
             renderStudents();
+        }
+
+        // v2.19.0-fix: 成绩管理页面从服务器拉取最新成绩
+        if (pageName === 'scores') {
+            loadScoresFromServer().then(function() {
+                renderExamScores();
+            });
         }
     }
     

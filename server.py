@@ -108,13 +108,34 @@ class ExamServer:
         exam = next((e for e in self.exams if e['id'] == self.published_exam_id), None)
         if not exam:
             return None
-        # 返回考试配置（不含预选题目，题目由学员端随机抽取）+ 题库 + 级别
-        exam_copy = {k: v for k, v in exam.items() if k != 'questions'}
-        if 'questions' in exam and exam['questions']:
-            exam_copy['questionCount'] = len(exam['questions'])
+
+        # v2.19.0-fix: 服务器端生成考试题目，学员端直接使用（避免客户端题库不一致）
+        exam_levels = exam.get('levels', [])
+        exam_types = exam.get('questionTypes', [])
+        all_questions = self.questions
+
+        # 按级别和题型过滤题库
+        available = [q for q in all_questions
+                     if q.get('type') in exam_types
+                     and any(l in (q.get('levels') or []) for l in exam_levels)]
+
+        # 随机排序
+        if exam.get('randomOrder', True):
+            random.shuffle(available)
+
+        # 截取指定数量
+        count = exam.get('questionCount', 0)
+        if count > 0 and len(available) > count:
+            available = available[:count]
+
+        # 把生成的题目嵌入考试对象中
+        exam_copy = dict(exam)
+        exam_copy['questions'] = available
+        exam_copy['questionCount'] = len(available)
+
         return {
             'exam': exam_copy,
-            'questions': self.questions,
+            'questions': available,
             'levels': self.levels
         }
 
@@ -251,6 +272,14 @@ class ExamHTTPHandler(http.server.SimpleHTTPRequestHandler):
         # 获取监控数据（管理员端）
         elif path == '/api/monitor':
             self._send_json(server.get_monitor_data())
+
+        # 获取所有成绩（管理员端）
+        elif path == '/api/scores':
+            self._send_json({
+                'status': 'ok',
+                'scores': server.scores,
+                'count': len(server.scores)
+            })
 
         # 根路径：提供index.html（强制无缓存）
         elif path == '/' or path == '/index.html':

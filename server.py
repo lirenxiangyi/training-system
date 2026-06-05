@@ -252,7 +252,22 @@ class ExamHTTPHandler(http.server.SimpleHTTPRequestHandler):
         elif path == '/api/monitor':
             self._send_json(server.get_monitor_data())
 
-        # 其他请求：提供静态文件（HTML等）
+        # 根路径：提供index.html（强制无缓存）
+        elif path == '/' or path == '/index.html':
+            try:
+                with open('index.html', 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+                self.send_header('Pragma', 'no-cache')
+                self.send_header('Expires', '0')
+                self.end_headers()
+                self.wfile.write(content.encode('utf-8'))
+            except Exception as e:
+                self._send_json({'error': '无法读取index.html: ' + str(e)}, 500)
+
+        # 其他静态文件
         else:
             super().do_GET()
 

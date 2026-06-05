@@ -22,14 +22,14 @@
         document.body.appendChild(div);
     });
     // 版本标记，强制浏览器不使用缓存
-    console.log('TRAINING SYSTEM v2.17.0 - LOADED AT ' + new Date().toISOString());
+    console.log('TRAINING SYSTEM v2.18.0 - LOADED AT ' + new Date().toISOString());
     
     // 页面加载时检查：快速同步链接（?s=）会自动处理，无需切换tab
     window.addEventListener('DOMContentLoaded', function() {
         // 不再自动切换到同步tab，快速同步链接会自动在后台完成
     });
     </script>
-    <title>冉鹏工作室培训管理系统 v2.17.0</title>
+    <title>冉鹏工作室培训管理系统 v2.18.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
@@ -1041,6 +1041,24 @@
     </div>
 </div>
 
+<!-- 成绩回传码导入模态框 -->
+<div id="importScoreCodeModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">导入远程成绩</div>
+        <div style="padding: 20px;">
+            <p style="font-size:13px;color:#666;margin-bottom:15px;">将学员发送的成绩回传码粘贴到下方，点击"导入"即可将成绩添加到系统。</p>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>成绩回传码</label>
+                <textarea id="importScoreCodeInput" rows="4" placeholder="粘贴学员发送的成绩回传码..."></textarea>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn btn-secondary" onclick="closeModal('importScoreCodeModal')">取消</button>
+                <button class="btn btn-primary" onclick="importScoreCode()">导入成绩</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 考试结果页面 -->
 <div id="examResultPage" style="display:none;" class="exam-page-container">
     <div style="width: 100%;">
@@ -1055,6 +1073,14 @@
                     <div style="font-size: 12px; margin-top: 10px; opacity: 0.9;" id="resultExamName">考试</div>
                 </div>
                 <button class="btn btn-primary" onclick="backToExamList()" style="width: 100%;">返回考试列表</button>
+                <div id="scoreReturnCodeArea" style="margin-top:16px;display:none;">
+                    <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:12px;font-size:13px;">
+                        <div style="font-weight:500;color:#2c5282;margin-bottom:8px;">成绩回传码</div>
+                        <p style="color:#4a5568;margin:0 0 8px 0;font-size:12px;">请将此码复制发送给管理员（微信/QQ）</p>
+                        <textarea id="scoreReturnCodeText" readonly rows="3" style="width:100%;font-size:11px;background:#f7fafc;border:1px solid #cbd5e0;border-radius:4px;padding:8px;resize:none;font-family:monospace;"></textarea>
+                        <button class="btn btn-primary" onclick="copyScoreReturnCode()" style="margin-top:8px;width:100%;font-size:12px;">一键复制回传码</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1275,7 +1301,10 @@
             <div style="margin-bottom: 24px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                     <h3 style="font-size: 16px; color: #2c5282; margin:0;">📋 考试成绩</h3>
-                    <button class="btn btn-secondary" onclick="exportExamScores()" style="padding:6px 12px;font-size:12px;">导出考试成绩</button>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-primary" onclick="showImportScoreCodeModal()" style="padding:6px 12px;font-size:12px;">导入远程成绩</button>
+                        <button class="btn btn-secondary" onclick="exportExamScores()" style="padding:6px 12px;font-size:12px;">导出考试成绩</button>
+                    </div>
                 </div>
                 <div class="search-box">
                     <input type="text" id="examScoresSearch" placeholder="搜索考试成绩..." onkeyup="filterExamScores()">
@@ -1385,8 +1414,21 @@
                 <h2>考试管理</h2>
                 <div class="page-header-actions">
                     <button class="btn btn-primary" onclick="openAddExamModal()">创建考试</button>
+                    <button class="btn btn-secondary" onclick="toggleExamMonitor()">考试监控</button>
                 </div>
             </div>
+            
+            <!-- 考试监控面板 -->
+            <div id="examMonitorPanel" style="display:none;margin-bottom:20px;background:#ebf8ff;border:1px solid #bee3f8;border-radius:12px;padding:16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <h3 style="font-size:15px;color:#2c5282;margin:0;">考试监控面板</h3>
+                    <button class="btn btn-secondary" onclick="refreshExamMonitor()" style="font-size:12px;padding:4px 10px;">刷新数据</button>
+                </div>
+                <div id="examMonitorContent">
+                    <div style="text-align:center;color:#999;padding:20px;font-size:13px;">暂无考试数据</div>
+                </div>
+            </div>
+            
             <div class="table-container">
                 <table>
                     <thead>
@@ -2120,6 +2162,8 @@
     let currentExamIndex = -1;
     let currentExamAnswers = {};
     let examStartTime = null;
+    let examTimerInterval = null;
+    let examTimeRemaining = 0;
     let currentExamStudent = null;
     let scheduleViewDate = new Date();
     let editingScheduleId = null;
@@ -2158,6 +2202,7 @@
             { id: 'E001', name: '前端基础测试', questionCount: 2, timeLimit: 60, participants: 5, status: 'active', questions: [] }
         ],
         scores: [],
+        examSignIns: [],  // 考试签到记录 [{studentId, studentName, examId, signInTime}]
         teachers: [
             { id: 'T001', name: '王老师', experience: 5, courses: 'JavaScript基础' },
             { id: 'T002', name: '李老师', experience: 8, courses: 'Python编程' }
@@ -2430,6 +2475,30 @@
             }
         }
         
+        // 【P0修复】检查考试次数限制
+        if (exam.type === 'formal') {
+            const existingScores = (database.scores || []).filter(s => s.studentId === studentId && s.examId === exam.id);
+            const maxAttempts = exam.maxAttempts || 1;
+            if (existingScores.length >= maxAttempts) {
+                alert(`该考试最多允许考${maxAttempts}次，您已考${existingScores.length}次，不能再考了。`);
+                return;
+            }
+        }
+        
+        // 【P1新增】记录签到
+        if (!database.examSignIns) database.examSignIns = [];
+        const alreadySigned = database.examSignIns.find(s => s.studentId === studentId && s.examId === exam.id);
+        if (!alreadySigned) {
+            database.examSignIns.push({
+                studentId: studentId,
+                studentName: currentExamStudent.name,
+                examId: exam.id,
+                examName: exam.name,
+                signInTime: Date.now()
+            });
+            saveData();
+        }
+        
         currentExam = exam;
         currentExamIndex = examIndex;
         currentExamAnswers = {};
@@ -2500,6 +2569,9 @@
         // 初始化题目索引
         currentQuestionIndex = 0;
         showExamQuestion();
+        
+        // 【P0修复】启动倒计时
+        startExamCountdown(exam.timeLimit);
     }
     
     // 当前题目索引（改为全局变量）
@@ -2844,12 +2916,65 @@
         document.getElementById('examProgress').style.width = progress + '%';
     }
     
-    function submitStudentExam() {
-        if (Object.keys(currentExamAnswers).length < currentExam.questions.length) {
+    // ==================== 考试倒计时 ====================
+    function startExamCountdown(timeLimitMinutes) {
+        stopExamCountdown();
+        if (!timeLimitMinutes || timeLimitMinutes <= 0) {
+            document.getElementById('examTimer').textContent = '无限制';
+            document.getElementById('examTimer').style.color = '#48bb78';
+            return;
+        }
+        examTimeRemaining = timeLimitMinutes * 60;
+        updateTimerDisplay();
+        examTimerInterval = setInterval(function() {
+            examTimeRemaining--;
+            updateTimerDisplay();
+            if (examTimeRemaining <= 0) {
+                stopExamCountdown();
+                showToast('考试时间已到，系统自动交卷', 'warning');
+                setTimeout(function() {
+                    submitStudentExam(true);
+                }, 500);
+            }
+        }, 1000);
+    }
+    
+    function stopExamCountdown() {
+        if (examTimerInterval) {
+            clearInterval(examTimerInterval);
+            examTimerInterval = null;
+        }
+    }
+    
+    function updateTimerDisplay() {
+        const timerEl = document.getElementById('examTimer');
+        if (!timerEl) return;
+        const minutes = Math.floor(examTimeRemaining / 60);
+        const seconds = examTimeRemaining % 60;
+        const display = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+        timerEl.textContent = display;
+        if (examTimeRemaining <= 60) {
+            timerEl.style.color = '#e53e3e';
+            timerEl.style.background = '#fff5f5';
+            timerEl.style.animation = 'none';
+        } else if (examTimeRemaining <= 300) {
+            timerEl.style.color = '#dd6b20';
+            timerEl.style.background = '#fffaf0';
+        } else {
+            timerEl.style.color = '#2d3748';
+            timerEl.style.background = '#edf2f7';
+        }
+    }
+
+    function submitStudentExam(isAutoSubmit) {
+        if (!isAutoSubmit && Object.keys(currentExamAnswers).length < currentExam.questions.length) {
             if (!confirm('还有未答题目，确定要提交吗？')) {
                 return;
             }
         }
+        
+        // 停止倒计时
+        stopExamCountdown();
         
         let score = 0;
         currentExam.questions.forEach((question, idx) => {
@@ -2860,10 +2985,8 @@
         
         const finalScore = Math.round(score * 10) / 10;
         
-        // 【修改】允许保存多次考试成绩（补考记录）
-        // 每次考试都新增一条记录，而不是覆盖
-        database.scores.push({
-            id: 'SC' + String(database.scores.length + 1).padStart(5, '0'),
+        // 构建成绩记录
+        const scoreRecord = {
             studentId: currentExamStudent.id,
             studentName: currentExamStudent.name,
             examId: currentExam.id,
@@ -2871,7 +2994,12 @@
             score: finalScore,
             date: new Date().toLocaleDateString(),
             timestamp: Date.now()
-        });
+        };
+        
+        // 保存到本地 scores（管理员导入后也会有）
+        const newScoreId = 'SC' + String((database.scores || []).length + 1).padStart(5, '0');
+        scoreRecord.id = newScoreId;
+        database.scores.push(scoreRecord);
         
         // 【关键】清空已生成的题目，下次补考时重新随机抽取
         currentExam.questions = [];
@@ -2879,13 +3007,18 @@
         
         saveData();
         
+        // 显示结果
         document.getElementById('examTestingPage').style.display = 'none';
         document.getElementById('examResultPage').style.display = 'flex';
         document.getElementById('resultScore').textContent = finalScore;
         document.getElementById('resultExamName').textContent = currentExam.name;
+        
+        // 【P1新增】生成成绩回传码
+        generateScoreReturnCode(scoreRecord);
     }
     
     function backToExamList() {
+        stopExamCountdown();
         document.getElementById('examResultPage').style.display = 'none';
         document.getElementById('examPage').style.display = 'flex';
         loadStudentExams(currentExamStudent.id);
@@ -3788,6 +3921,106 @@
         }).join('');
     }
     
+    // ==================== 成绩回传码功能 ====================
+    function generateScoreReturnCode(scoreRecord) {
+        try {
+            const codeData = JSON.stringify(scoreRecord);
+            const code = 'SCORE:' + btoa(unescape(encodeURIComponent(codeData)));
+            const codeArea = document.getElementById('scoreReturnCodeArea');
+            const codeText = document.getElementById('scoreReturnCodeText');
+            if (codeArea && codeText) {
+                codeArea.style.display = 'block';
+                codeText.value = code;
+            }
+        } catch(e) {
+            console.error('生成成绩回传码失败:', e);
+        }
+    }
+    
+    function copyScoreReturnCode() {
+        const codeText = document.getElementById('scoreReturnCodeText');
+        if (codeText) {
+            codeText.select();
+            codeText.setSelectionRange(0, 99999);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(codeText.value).then(function() {
+                    showToast('回传码已复制，请发送给管理员', 'success');
+                });
+            } else {
+                document.execCommand('copy');
+                showToast('回传码已复制，请发送给管理员', 'success');
+            }
+        }
+    }
+    
+    function showImportScoreCodeModal() {
+        document.getElementById('importScoreCodeInput').value = '';
+        document.getElementById('importScoreCodeModal').classList.add('active');
+    }
+    
+    function importScoreCode() {
+        const code = document.getElementById('importScoreCodeInput').value.trim();
+        if (!code) {
+            showToast('请粘贴成绩回传码', 'error');
+            return;
+        }
+        
+        try {
+            // 支持多条回传码（用换行分隔）
+            const lines = code.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            let importCount = 0;
+            let duplicateCount = 0;
+            
+            lines.forEach(line => {
+                // 支持批量：可能包含 "SCORE:" 前缀，也可能没有
+                let base64Part = line;
+                if (line.startsWith('SCORE:')) {
+                    base64Part = line.substring(6);
+                }
+                
+                // 跳过提示文字等非码内容
+                if (base64Part.length < 20) return;
+                
+                const jsonStr = decodeURIComponent(escape(atob(base64Part)));
+                const record = JSON.parse(jsonStr);
+                
+                // 验证必要字段
+                if (!record.studentId || !record.examId || record.score === undefined) return;
+                
+                // 检查是否已导入过（通过 timestamp 防止重复）
+                const existing = (database.scores || []).find(s => 
+                    s.studentId === record.studentId && 
+                    s.examId === record.examId && 
+                    s.timestamp === record.timestamp
+                );
+                if (existing) {
+                    duplicateCount++;
+                    return;
+                }
+                
+                // 分配新ID
+                const newId = 'SC' + String((database.scores || []).length + 1).padStart(5, '0');
+                record.id = newId;
+                database.scores.push(record);
+                importCount++;
+            });
+            
+            saveData();
+            renderExamScores();
+            updateDashboard();
+            closeModal('importScoreCodeModal');
+            
+            let msg = '成功导入' + importCount + '条成绩';
+            if (duplicateCount > 0) {
+                msg += '，跳过' + duplicateCount + '条重复记录';
+            }
+            showToast(msg, 'success');
+        } catch(e) {
+            console.error('导入成绩回传码失败:', e);
+            showToast('回传码格式错误，请检查是否完整复制', 'error');
+        }
+    }
+
     function exportExamScores() {
         const scores = database.scores || [];
         if (scores.length === 0) {
@@ -4958,6 +5191,77 @@
         });  // 不过滤空字段，保留原始字段数
     }
     
+    // ==================== 考试监控面板 ====================
+    function toggleExamMonitor() {
+        const panel = document.getElementById('examMonitorPanel');
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            refreshExamMonitor();
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+    
+    function refreshExamMonitor() {
+        const content = document.getElementById('examMonitorContent');
+        if (!content) return;
+        const exams = database.exams || [];
+        const scores = database.scores || [];
+        const signIns = database.examSignIns || [];
+        
+        if (exams.length === 0) {
+            content.innerHTML = '<div style="text-align:center;color:#999;padding:20px;font-size:13px;">暂无考试</div>';
+            return;
+        }
+        
+        let html = '';
+        exams.forEach(exam => {
+            const signedIn = signIns.filter(s => s.examId === exam.id);
+            const submitted = scores.filter(s => s.examId === exam.id);
+            const submittedIds = new Set(submitted.map(s => s.studentId));
+            const notSubmitted = signedIn.filter(s => !submittedIds.has(s.studentId));
+            
+            const passLine = exam.passScore || 60;
+            const passed = submitted.filter(s => s.score >= passLine);
+            const passRate = submitted.length > 0 ? (passed.length / submitted.length * 100).toFixed(0) : 0;
+            const avgScore = submitted.length > 0 ? (submitted.reduce((a, b) => a + b.score, 0) / submitted.length).toFixed(1) : '-';
+            
+            html += '<div style="background:white;border-radius:8px;padding:12px;margin-bottom:8px;border:0.5px solid #e2e8f0;">';
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
+            html += '<span style="font-weight:500;font-size:14px;">' + exam.name + '</span>';
+            html += '<span style="font-size:12px;color:#718096;">及格线 ' + passLine + '分</span>';
+            html += '</div>';
+            
+            html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">';
+            html += '<div style="text-align:center;background:#ebf8ff;border-radius:6px;padding:8px;"><div style="font-size:20px;font-weight:500;color:#3182ce;">' + signedIn.length + '</div><div style="font-size:11px;color:#718096;">已签到</div></div>';
+            html += '<div style="text-align:center;background:#c6f6d5;border-radius:6px;padding:8px;"><div style="font-size:20px;font-weight:500;color:#38a169;">' + submitted.length + '</div><div style="font-size:11px;color:#718096;">已交卷</div></div>';
+            html += '<div style="text-align:center;background:#fefcbf;border-radius:6px;padding:8px;"><div style="font-size:20px;font-weight:500;color:#d69e2e;">' + notSubmitted.length + '</div><div style="font-size:11px;color:#718096;">未交卷</div></div>';
+            html += '<div style="text-align:center;background:#f0fff4;border-radius:6px;padding:8px;"><div style="font-size:20px;font-weight:500;color:#2f855a;">' + passRate + '%</div><div style="font-size:11px;color:#718096;">通过率</div></div>';
+            html += '</div>';
+            
+            if (avgScore !== '-') {
+                html += '<div style="font-size:12px;color:#4a5568;">平均分：<strong>' + avgScore + '</strong></div>';
+            }
+            
+            if (notSubmitted.length > 0) {
+                html += '<div style="margin-top:8px;font-size:12px;color:#e53e3e;">未交卷：' + notSubmitted.map(s => s.studentName + '(' + s.studentId + ')').join('、') + '</div>';
+            }
+            
+            if (submitted.length > 0) {
+                html += '<div style="margin-top:4px;font-size:12px;color:#38a169;">';
+                html += submitted.map(s => {
+                    const color = s.score >= passLine ? '#38a169' : '#e53e3e';
+                    return '<span style="margin-right:12px;">' + s.studentName + ': <strong style="color:' + color + '">' + s.score + '</strong></span>';
+                }).join('');
+                html += '</div>';
+            }
+            
+            html += '</div>';
+        });
+        
+        content.innerHTML = html;
+    }
+
     // 考试管理
     function renderExams() {
         const tbody = document.getElementById('examsList');
@@ -4986,13 +5290,16 @@
             // 构建时间控制信息
             const timeControlInfo = getTimeControlInfo(e);
 
+            // 【P0修复】动态计算参加人数
+            const participantCount = (database.scores || []).filter(s => s.examId === e.id).length;
+
             return `<tr>
                 <td>${e.name} ${typeLabel}</td>
                 <td>${typeDesc}</td>
                 <td>${(e.levels || []).length > 0 ? (e.levels || []).join('、') : '全部'}</td>
                 <td>${e.timeLimit === 0 ? '无限制' : e.timeLimit + '分钟'}</td>
                 <td>${timeControlInfo}</td>
-                <td>${e.participants || 0}</td>
+                <td>${participantCount}</td>
                 <td><span style="color: #48bb78;">${e.status === 'active' ? '活跃' : '已结束'}</span></td>
                 <td>
                     <button class="btn btn-secondary" onclick="editExam('${e.id}')">编辑</button>

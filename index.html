@@ -3636,8 +3636,8 @@
             renderStudents();
         }
 
-        // v2.19.0-fix: 成绩管理页面从服务器拉取最新成绩
-        if (pageName === 'scores') {
+        // v2.19.0-fix8: 成绩管理页面从服务器拉取最新成绩（修复页面名不匹配）
+        if (pageName === 'grades') {
             loadScoresFromServer().then(function() {
                 renderExamScores();
             });

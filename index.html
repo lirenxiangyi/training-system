@@ -834,7 +834,7 @@
 <div id="loginPage" class="login-container">
     <div class="login-card">
         <h1>冉鹏工作室</h1>
-        <p>培训管理系统 v2.14.0</p>
+        <p>培训管理系统 v2.19.0</p>
         
         <div class="login-tabs">
             <button class="login-tab active" onclick="switchLoginTab('admin', this)">管理员登陆</button>
@@ -1416,6 +1416,11 @@
                     <button class="btn btn-primary" onclick="openAddExamModal()">创建考试</button>
                     <button class="btn btn-secondary" onclick="toggleExamMonitor()">考试监控</button>
                 </div>
+            </div>
+
+            <!-- v2.19.0: 服务器模式操作提示 -->
+            <div id="serverModeTip" style="display:none;margin-bottom:16px;background:linear-gradient(135deg,#c6f6d5,#b2f5ea);border:1px solid #9ae6b4;border-radius:10px;padding:12px 16px;font-size:13px;color:#22543d;">
+                <strong>服务器模式已启用</strong> — 点击考试列表中的「发布考试」按钮，学员即可通过局域网地址参加考试。成绩将自动汇总到服务器。
             </div>
             
             <!-- 考试监控面板 -->
@@ -2169,7 +2174,187 @@
     let editingScheduleId = null;
     let editingProfileId = null;
     let editingAttendanceIdx = null;
-    
+
+    // ==================== v2.19.0: 服务器模式（方案A） ====================
+    let isServerMode = false;           // 是否处于服务器模式
+    let serverPollingTimer = null;      // 监控面板轮询定时器
+    let publishedExamCache = null;      // 服务器发布的考试数据缓存
+
+    // 服务器API辅助函数
+    async function serverFetch(path, options = {}) {
+        try {
+            const resp = await fetch(path, {
+                headers: { 'Content-Type': 'application/json' },
+                ...options
+            });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            return await resp.json();
+        } catch (e) {
+            console.warn('[服务器模式] API请求失败:', path, e);
+            return null;
+        }
+    }
+
+    // 检测服务器模式
+    async function detectServerMode() {
+        try {
+            const resp = await fetch('/api/status');
+            if (resp.ok) {
+                const data = await resp.json();
+                isServerMode = data.server === true;
+                if (isServerMode) {
+                    console.log('[服务器模式] 已连接到考试服务器');
+                    showServerModeIndicator();
+                }
+                return isServerMode;
+            }
+        } catch (e) {
+            // 非服务器环境，正常
+        }
+        isServerMode = false;
+        return false;
+    }
+
+    // 显示服务器模式指示器
+    function showServerModeIndicator() {
+        const existing = document.getElementById('serverModeIndicator');
+        if (existing) existing.remove();
+
+        const indicator = document.createElement('div');
+        indicator.id = 'serverModeIndicator';
+        indicator.style.cssText = 'position:fixed;top:10px;right:10px;z-index:10000;background:linear-gradient(135deg,#48bb78,#38a169);color:white;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;box-shadow:0 2px 8px rgba(72,187,120,0.4);display:flex;align-items:center;gap:6px;cursor:pointer;';
+        indicator.innerHTML = '<span style="width:8px;height:8px;background:#fff;border-radius:50%;animation:pulse 2s infinite;"></span> 服务器模式（方案A）';
+        indicator.title = '已连接到本地考试服务器';
+        document.body.appendChild(indicator);
+
+        // 添加闪烁动画
+        if (!document.getElementById('pulseStyle')) {
+            const style = document.createElement('style');
+            style.id = 'pulseStyle';
+            style.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}';
+            document.head.appendChild(style);
+        }
+    }
+
+    // 管理员同步数据到服务器
+    async function syncDataToServer() {
+        if (!isServerMode) return false;
+        const result = await serverFetch('/api/admin/sync', {
+            method: 'POST',
+            body: JSON.stringify({
+                students: database.students || [],
+                exams: database.exams || [],
+                questions: database.questions || [],
+                levels: database.levels || []
+            })
+        });
+        if (result && result.status === 'ok') {
+            console.log('[服务器模式] 数据同步成功:', result);
+            return true;
+        }
+        return false;
+    }
+
+    // 管理员发布考试到服务器
+    async function publishExamToServer(examId) {
+        const result = await serverFetch('/api/exam/publish', {
+            method: 'POST',
+            body: JSON.stringify({ examId: examId })
+        });
+        if (result && result.status === 'ok') {
+            showToast('考试已发布！学员现在可以参加考试了', 'success');
+            refreshServerMonitor();
+            renderExams(); // 刷新按钮状态
+            return true;
+        } else {
+            showToast('发布失败: ' + (result ? result.message : '未知错误'), 'error');
+            return false;
+        }
+    }
+
+    // 管理员取消发布考试
+    async function unpublishExamFromServer() {
+        if (!confirm('确定要取消发布考试吗？已提交的成绩不会被删除。')) return;
+        const result = await serverFetch('/api/exam/unpublish', {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+        if (result && result.status === 'ok') {
+            showToast('已取消发布考试', 'success');
+            refreshServerMonitor();
+            renderExams();
+        }
+    }
+
+    // 开始服务器监控面板轮询
+    function startServerMonitorPolling() {
+        if (serverPollingTimer) clearInterval(serverPollingTimer);
+        serverPollingTimer = setInterval(function() {
+            if (isServerMode && document.getElementById('examMonitorPanel') &&
+                document.getElementById('examMonitorPanel').style.display !== 'none') {
+                refreshServerMonitor();
+            }
+        }, 3000); // 每3秒刷新
+    }
+
+    // 刷新服务器监控数据
+    async function refreshServerMonitor() {
+        if (!isServerMode) return;
+        const data = await serverFetch('/api/monitor');
+        if (!data) return;
+
+        const content = document.getElementById('examMonitorContent');
+        if (!content) return;
+
+        if (!data.active) {
+            content.innerHTML = '<div style="text-align:center;color:#999;padding:20px;font-size:13px;">服务器运行中，暂无发布的考试</div>' +
+                '<div style="text-align:center;margin-top:10px;"><button class="btn btn-primary" onclick="showPage(\'exams\')">去发布考试</button></div>';
+            return;
+        }
+
+        let html = '<div style="background:linear-gradient(135deg,#ebf8ff,#e9d8fd);border-radius:8px;padding:12px;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
+        html += '<span style="font-weight:600;color:#2c5282;font-size:14px;">' + (data.examName || '考试') + '</span>';
+        html += '<span style="font-size:11px;color:#718096;">及格线 ' + (data.passScore || 60) + '分</span>';
+        html += '</div>';
+        html += '</div>';
+
+        // 统计卡片
+        html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">';
+        html += '<div style="text-align:center;background:#ebf8ff;border-radius:8px;padding:10px;"><div style="font-size:24px;font-weight:700;color:#3182ce;">' + data.signedIn + '</div><div style="font-size:11px;color:#718096;">已签到</div></div>';
+        html += '<div style="text-align:center;background:#c6f6d5;border-radius:8px;padding:10px;"><div style="font-size:24px;font-weight:700;color:#38a169;">' + data.submitted + '</div><div style="font-size:11px;color:#718096;">已交卷</div></div>';
+        const notSubmitted = data.signedIn - data.submitted;
+        html += '<div style="text-align:center;background:#fefcbf;border-radius:8px;padding:10px;"><div style="font-size:24px;font-weight:700;color:#d69e2e;">' + Math.max(0, notSubmitted) + '</div><div style="font-size:11px;color:#718096;">未交卷</div></div>';
+        html += '<div style="text-align:center;background:#f0fff4;border-radius:8px;padding:10px;"><div style="font-size:24px;font-weight:700;color:#2f855a;">' + data.passRate + '%</div><div style="font-size:11px;color:#718096;">通过率</div></div>';
+        html += '</div>';
+
+        if (data.submitted > 0) {
+            html += '<div style="font-size:12px;color:#4a5568;margin-bottom:8px;">平均分: <strong>' + data.avgScore + '</strong></div>';
+            html += '<div style="background:#f7fafc;border-radius:6px;padding:10px;max-height:200px;overflow-y:auto;">';
+            html += '<div style="font-size:11px;font-weight:600;color:#2d3748;margin-bottom:6px;">成绩明细:</div>';
+            data.scores.forEach(function(s) {
+                const color = s.score >= (data.passScore || 60) ? '#38a169' : '#e53e3e';
+                html += '<span style="display:inline-block;margin:2px 8px 2px 0;font-size:12px;">' +
+                    s.studentName + ': <strong style="color:' + color + '">' + s.score + '分</strong></span>';
+            });
+            html += '</div>';
+        }
+
+        if (notSubmitted > 0 && data.signIns && data.signIns.length > 0) {
+            const submittedIds = new Set((data.scores || []).map(function(s) { return s.studentId; }));
+            const notSubmittedList = data.signIns.filter(function(s) { return !submittedIds.has(s.studentId); });
+            if (notSubmittedList.length > 0) {
+                html += '<div style="margin-top:8px;font-size:12px;color:#e53e3e;">未交卷: ' +
+                    notSubmittedList.map(function(s) { return s.studentName; }).join('、') + '</div>';
+            }
+        }
+
+        html += '<div style="text-align:right;margin-top:8px;font-size:10px;color:#a0aec0;">自动刷新中...</div>';
+        content.innerHTML = html;
+    }
+
+    // ==================== 原有变量和数据库 ====================
+
     // 数据存储
     let database = {
         users: {
@@ -2268,12 +2453,18 @@
     function doStudentLogin() {
         const name = document.getElementById('studentName').value.trim();
         const id = document.getElementById('studentID').value.trim();
-        
+
         if (!name || !id) {
             showToast('请输入姓名和学员ID', 'error');
             return;
         }
-        
+
+        // v2.19.0: 服务器模式下，通过服务器API验证学员
+        if (isServerMode) {
+            doServerStudentLogin(name, id);
+            return;
+        }
+
         // 调试信息：输出当前数据库中学员列表，方便排查
         console.log('[登录调试] 输入姓名:', name, '| 输入ID:', id);
         console.log('[登录调试] 数据库学员列表:', JSON.stringify(database.students.map(s => ({id: s.id, name: s.name}))));
@@ -2305,7 +2496,84 @@
             showToast('学员信息不匹配' + detail + '（请联系管理员获取同步链接）', 'error');
         }
     }
-    
+
+    // v2.19.0: 服务器模式学员登录（通过API验证 + 加载考试数据）
+    async function doServerStudentLogin(name, id) {
+        showToast('正在验证...', 'info');
+        const result = await serverFetch('/api/login', {
+            method: 'POST',
+            body: JSON.stringify({ name: name, id: id })
+        });
+
+        if (!result) {
+            showToast('无法连接到服务器，请检查网络', 'error');
+            return;
+        }
+
+        if (result.valid && result.student) {
+            console.log('[服务器模式] 学员验证成功:', result.student);
+            const student = result.student;
+
+            // 将学员数据写入本地database（考试用）
+            const existingIdx = database.students.findIndex(function(s) {
+                return s.id.trim() === student.id.trim();
+            });
+            if (existingIdx >= 0) {
+                database.students[existingIdx] = student;
+            } else {
+                database.students.push(student);
+            }
+            saveData();
+
+            currentUser = name;
+            currentRole = 'student';
+            studentExamMode = true;
+            enterExamPage(student);
+
+            // 加载服务器发布的考试数据
+            await loadPublishedExamFromServer();
+        } else {
+            showToast('学员信息不匹配，请联系管理员确认', 'error');
+        }
+    }
+
+    // 从服务器加载已发布的考试数据
+    async function loadPublishedExamFromServer() {
+        const data = await serverFetch('/api/exam/published');
+        if (!data || !data.exam) {
+            console.log('[服务器模式] 当前没有发布的考试');
+            return;
+        }
+
+        // 更新本地题库和级别（用于题目随机抽取）
+        if (data.questions && data.questions.length > 0) {
+            database.questions = data.questions;
+        }
+        if (data.levels && data.levels.length > 0) {
+            database.levels = data.levels;
+        }
+
+        // 确保考试存在且已更新
+        const examIdx = database.exams.findIndex(function(e) { return e.id === data.exam.id; });
+        if (examIdx >= 0) {
+            // 更新已有考试的配置（保留本地已有的成绩）
+            data.exam.questions = []; // 清空预选题目，让学员端重新随机抽取
+            Object.assign(database.exams[examIdx], data.exam);
+        } else {
+            // 新增考试
+            data.exam.questions = [];
+            database.exams.push(data.exam);
+        }
+
+        publishedExamCache = data;
+        saveData();
+
+        // 重新加载考试列表
+        if (currentExamStudent) {
+            loadStudentExams(currentExamStudent.id);
+        }
+    }
+
     function enterMainPage() {
         document.getElementById('loginPage').style.display = 'none';
         document.getElementById('mainPage').style.display = 'flex';
@@ -2313,6 +2581,17 @@
         document.getElementById('sidebarUsername').textContent = displayName;
         document.getElementById('sidebarRole').textContent = currentRole === 'admin' ? '管理员' : '教师';
         document.getElementById('settingsAdminName').value = displayName;
+
+        // v2.19.0: 服务器模式下，管理员登录后自动同步数据
+        if (isServerMode) {
+            syncDataToServer().then(function(ok) {
+                if (ok) {
+                    showToast('数据已同步到考试服务器', 'success');
+                }
+            });
+            startServerMonitorPolling();
+        }
+
         updateDashboard();
         renderAllData();
         renderSchedule();
@@ -2375,12 +2654,22 @@
     }
     
     function loadStudentExams(studentId) {
-        const exams = database.exams || [];
+        let exams = database.exams || [];
+
+        // v2.19.0: 服务器模式下只显示已发布的考试
+        if (isServerMode && publishedExamCache && publishedExamCache.exam) {
+            exams = exams.filter(function(e) { return e.id === publishedExamCache.exam.id; });
+        }
+
         const examContainer = document.getElementById('studentExamList');
         examContainer.innerHTML = '';
 
         if (exams.length === 0) {
-            examContainer.innerHTML = '<div style="text-align:center; color:#999; padding:30px;">暂无考试</div>';
+            if (isServerMode) {
+                examContainer.innerHTML = '<div style="text-align:center; color:#999; padding:30px;">管理员尚未发布考试，请等待...</div>';
+            } else {
+                examContainer.innerHTML = '<div style="text-align:center; color:#999; padding:30px;">暂无考试</div>';
+            }
             return;
         }
 
@@ -2497,6 +2786,18 @@
                 signInTime: Date.now()
             });
             saveData();
+        }
+
+        // v2.19.0: 服务器模式下，签到也上报到服务器
+        if (isServerMode) {
+            serverFetch('/api/signin', {
+                method: 'POST',
+                body: JSON.stringify({
+                    studentId: studentId,
+                    studentName: currentExamStudent.name,
+                    examId: exam.id
+                })
+            });
         }
         
         currentExam = exam;
@@ -3000,21 +3301,48 @@
         const newScoreId = 'SC' + String((database.scores || []).length + 1).padStart(5, '0');
         scoreRecord.id = newScoreId;
         database.scores.push(scoreRecord);
-        
+
         // 【关键】清空已生成的题目，下次补考时重新随机抽取
         currentExam.questions = [];
         currentExam.questionCount = 0;
-        
+
         saveData();
-        
+
+        // v2.19.0: 服务器模式下，成绩自动上报到服务器（无需手动回传码）
+        if (isServerMode) {
+            serverFetch('/api/submit', {
+                method: 'POST',
+                body: JSON.stringify(scoreRecord)
+            }).then(function(result) {
+                if (result && result.status === 'ok') {
+                    console.log('[服务器模式] 成绩已上报到服务器');
+                }
+            });
+        }
+
         // 显示结果
         document.getElementById('examTestingPage').style.display = 'none';
         document.getElementById('examResultPage').style.display = 'flex';
         document.getElementById('resultScore').textContent = finalScore;
         document.getElementById('resultExamName').textContent = currentExam.name;
         
-        // 【P1新增】生成成绩回传码
+        // 【P1新增】生成成绩回传码（独立模式使用）
+        // v2.19.0: 服务器模式下成绩已自动上报，但仍生成回传码作为备用
         generateScoreReturnCode(scoreRecord);
+
+        // v2.19.0: 服务器模式下显示自动上报提示
+        if (isServerMode) {
+            const resultArea = document.getElementById('scoreReturnCodeArea');
+            if (resultArea) {
+                resultArea.style.display = 'block';
+                const codeBox = resultArea.querySelector('.exam-result-text');
+                // 在回传码区域前插入自动上报提示
+                const notice = document.createElement('div');
+                notice.style.cssText = 'background:#c6f6d5;border:1px solid #9ae6b4;border-radius:8px;padding:10px;margin-bottom:12px;font-size:13px;color:#276749;text-align:center;';
+                notice.innerHTML = '<strong>成绩已自动上报到服务器</strong><br><span style="font-size:11px;opacity:0.8;">以下回传码为备用，通常无需使用</span>';
+                resultArea.insertBefore(notice, resultArea.firstChild);
+            }
+        }
     }
     
     function backToExamList() {
@@ -5196,7 +5524,12 @@
         const panel = document.getElementById('examMonitorPanel');
         if (panel.style.display === 'none') {
             panel.style.display = 'block';
-            refreshExamMonitor();
+            // v2.19.0: 服务器模式下使用服务器实时数据
+            if (isServerMode) {
+                refreshServerMonitor();
+            } else {
+                refreshExamMonitor();
+            }
         } else {
             panel.style.display = 'none';
         }
@@ -5293,6 +5626,17 @@
             // 【P0修复】动态计算参加人数
             const participantCount = (database.scores || []).filter(s => s.examId === e.id).length;
 
+            // v2.19.0: 服务器模式下显示发布按钮
+            let publishBtn = '';
+            if (isServerMode) {
+                const isPublished = publishedExamCache && publishedExamCache.exam && publishedExamCache.exam.id === e.id;
+                if (isPublished) {
+                    publishBtn = '<button class="btn btn-danger" onclick="unpublishExamFromServer()" style="font-size:11px;padding:3px 8px;background:#e53e3e;margin-left:4px;" title="取消发布">取消发布</button>';
+                } else {
+                    publishBtn = '<button class="btn btn-primary" onclick="publishExamToServer(\'' + e.id + '\')" style="font-size:11px;padding:3px 8px;background:#38a169;margin-left:4px;" title="发布到服务器，学员可以参加考试">发布考试</button>';
+                }
+            }
+
             return `<tr>
                 <td>${e.name} ${typeLabel}</td>
                 <td>${typeDesc}</td>
@@ -5302,6 +5646,7 @@
                 <td>${participantCount}</td>
                 <td><span style="color: #48bb78;">${e.status === 'active' ? '活跃' : '已结束'}</span></td>
                 <td>
+                    ${publishBtn}
                     <button class="btn btn-secondary" onclick="editExam('${e.id}')">编辑</button>
                     <button class="btn btn-danger" onclick="deleteExam('${e.id}')">删除</button>
                 </td>
@@ -7914,16 +8259,19 @@
         loadData();
         initLevels();
 
+        // v2.19.0: 检测服务器模式（方案A）
+        await detectServerMode();
+
         // v2.14.0: 优先检测云端同步链接（?g=参数）
-        if (await checkGistParam()) {
+        if (!isServerMode && await checkGistParam()) {
             console.log('云端同步完成');
         }
         // v2.13.0: 再检测快速同步链接（?s=参数，学员点链接自动同步）
-        else if (checkQuickSyncParam()) {
+        else if (!isServerMode && checkQuickSyncParam()) {
             console.log('快速同步完成，已自动更新学员数据');
         }
         // 再检查旧的sync参数（完整数据同步）
-        else if (checkSyncParam()) {
+        else if (!isServerMode && checkSyncParam()) {
             console.log('同步码自动同步完成');
         }
 
@@ -8053,6 +8401,10 @@
         refreshAttendanceCourseFilter();
         renderAdminList();
         updateSettingsInfo();
+
+        // v2.19.0: 服务器模式下显示操作提示
+        const tip = document.getElementById('serverModeTip');
+        if (tip) tip.style.display = isServerMode ? 'block' : 'none';
     }
 </script>
 
